@@ -7,6 +7,9 @@ async def roulette(message, **kwargs):
 		count = int(message.content.split(" ")[1])
 		if count > 10:
 			count = 10
+	elif len(message.content.split(" ")) > 1 and message.content.split(" ")[1] == "count":
+		await message.channel.send(len(file_list))
+		return
 	else:
 		count = 1
 	for x in range(count):

@@ -1,15 +1,16 @@
 #bot.py
 import os
 import re
+import time
 import random
 import asyncio
 import discord
 import datetime
 import traceback
-
+from message_handles import *
 from dotenv import load_dotenv, find_dotenv
 
-from message_handles import *
+TIME_START = time.time()
 
 """
 Loads in values from a local .env file
@@ -24,6 +25,9 @@ if find_dotenv() != "":
     if TOKEN == None:
         print("Enter token manually:")
         TOKEN = input()
+        if re.search("^[a-zA-Z0-9]{24}\.?[a-zA-Z0-9]{6}\.?[a-zA-Z0-9]{27}", TOKEN) == None:
+            print("Invalid token provided")
+            exit()
     idsDict = {
         "OWNER" : int(os.getenv('OWNER')),
         "GUILD" : int(os.getenv('GUILD')),
@@ -51,16 +55,19 @@ startdirs = ["Stuff", "Manga"]
 file_list = []
 
 commands = {
+    "$hello":[greeting.hello,"says hello, what'd you expect?"],
     "$JP":[japanese.start,"Random kana"],
     "$contJP":[japanese.start,"Continous random kana"],
     "$wipe":[wipe.wipe,"Clears channel's messages"],
     "$count":[count.count,"Counts channel's messages"],
     "$boob":[boob.boob,"boob"],
     "$tally":[tally.tally,"uhh tally stuffy"],
-    "$tag":[tag.start,"tag stuff"],
-    ",":[tag.start,"also tag stuff"],
+    "$tag":[tag.start,"tag media, see '$tag help' for usage"],
+    ",":[tag.start,"calls a specific tag"],
     "$roulette":[roulette.roulette, "probably pulls something illegal from my drive"]
 }
+
+TIME_INIT = time.time() - TIME_START
 
 for item in startdirs:
     for dirpath, dirs, files in os.walk(startpath + item):
@@ -71,8 +78,11 @@ for item in startdirs:
                 else:
                     file_list.append("{}/{}".format(dirpath, file))
 
+TIME_FILES = time.time() - TIME_START
+
 @client.event
 async def on_ready():
+    TIME_READY = time.time() - TIME_START
     print(f'{client.user} has connected to Discord')
 
     """
@@ -94,55 +104,29 @@ async def on_ready():
             print(f'{member}, {member.activity}')
 
     #Confirmation and notification to discord server that the bot is online
-    #await client.get_guild(GUILD).get_channel(BOT_CHANNEL).send("Bot online: {}".format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")))
+    await client.get_channel(idsDict["LOG_CHANNEL"]).send("Bot online: {}\nTime to initialise variables: {} Time to compile directory files: {} Time for bot to 'Ready': {}"
+        .format(datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"), TIME_INIT, TIME_FILES, TIME_READY))
 
 @client.event
 async def on_message(message):
-    command = message.content.split()[0]
+    TIME_RECEIVED = time.time()
+    TIMESTAMP_RECEIVED = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     if message.author == client.user:
         return
-
-    if message.content.startswith("$hello"):
-        #await message.channel.send('Hello!')
-        await greeting.hello(message)
-
     try:
         if message.content.startswith("$") and message.channel.id != idsDict["BOT_CHANNEL"]:
             await message.channel.send("Please refrain from calling bot commands in non bot channel")
-        else:
+        elif message.content.startswith("$"):
+            command = message.content.split()[0]
             if message.content.startswith("$help"):
                 output = ""
                 for item in commands:
                     output = output + "{}: {} \n".format(item, commands[item][1])
                 await message.channel.send(output)
-            #    await message.channel.send(
-            #        "Current commands:\n"
-            #        "Random kana: $JP \n"
-            #        "Continous random kana: $contJP \n"
-            #        "Clear channel: $wipe \n"
-            #        "boob: $boob"
-            #        )
             elif command in commands.keys():
                 await commands[command][0](message, client=client, tally=tallyDict, TERMS=TERMS, tags=tagsDict, fl=file_list, ids=idsDict)
-                #if command == "$tally":
-                #    await commands[command][0](message, tallyDict, TERMS)
-                #elif command == "$tag":
-                #    await commands[command][0](message,tags)
-                #elif command == "$"
-                #else:
-                #    await commands[command][0](message)
-            #elif message.content.startswith("$JP") or message.content.startswith("$contJP"):
-            #    await japanese.start(message)
-            #elif message.content.startswith("$wipe"):
-            #    await wipe.wipe(message)
-            #elif message.content.startswith("$count"):
-            #    await count.count(message)
-            #elif message.content.startswith("$boob"):
-            #    await boob.boob(message)
-            #elif message.content.startswith("$tally"):
-            #    await tally.tally(message)
-            #elif message.content.startswith("$tag") or message.content.startswith(","):
-            #    await tag.start(message)
+            TIME_PROCESSED = time.time() - TIME_RECEIVED
+            await client.get_channel(idsDict["LOG_CHANNEL"]).send("Time command '{}' received: {} Message timestamp: {} Time to respond: {}".format(command, TIMESTAMP_RECEIVED, message.created_at.strftime("%Y-%m-%d %H:%M:%S"), TIME_PROCESSED))    
     except NameError:
         await message.channel.send("Bot channel non-existant:\n{}\n{}".format(e, traceback.print_exc()))
     except Exception as e:
