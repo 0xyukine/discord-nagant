@@ -8,6 +8,7 @@ import discord
 import datetime
 import traceback
 from message_handles import *
+from utils import *
 from dotenv import load_dotenv, find_dotenv
 
 TIME_START = time.time()
@@ -45,10 +46,13 @@ intents.members = True
 intents.presences = True
 client = discord.Client(intents=intents)
 
+validate.validate()
+TERMS, tallyDict, tagsDict = saveload.load()
+
 #Global variables
-TERMS = []
-tallyDict = {}
-tagsDict = {}
+#TERMS = []
+#tallyDict = {}
+#tagsDict = {}
 
 startpath = "/mnt/e/"
 startdirs = ["Stuff", "Manga"]
@@ -114,7 +118,7 @@ async def on_message(message):
     if message.author == client.user:
         return
     try:
-        if message.content.startswith("$") and message.channel.id != idsDict["BOT_CHANNEL"]:
+        if message.content.startswith("$") or message.content.startswith(",") and message.channel.id != idsDict["BOT_CHANNEL"]:
             await message.channel.send("Please refrain from calling bot commands in non bot channel")
         elif message.content.startswith("$"):
             command = message.content.split()[0]
@@ -127,6 +131,8 @@ async def on_message(message):
                 await commands[command][0](message, client=client, tally=tallyDict, TERMS=TERMS, tags=tagsDict, fl=file_list, ids=idsDict)
             TIME_PROCESSED = time.time() - TIME_RECEIVED
             await client.get_channel(idsDict["LOG_CHANNEL"]).send("Time command '{}' received: {} Message timestamp: {} Time to respond: {}".format(command, TIMESTAMP_RECEIVED, message.created_at.strftime("%Y-%m-%d %H:%M:%S"), TIME_PROCESSED))    
+        elif message.content.startswith(","):
+            await tag.start(message, client=client, tally=tallyDict, TERMS=TERMS, tags=tagsDict, fl=file_list, ids=idsDict)
     except NameError:
         await message.channel.send("Bot channel non-existant:\n{}\n{}".format(e, traceback.print_exc()))
     except Exception as e:

@@ -15,8 +15,8 @@ async def wipe(message, **kwargs):
 		else:
 			loop = 1
 		for x in range(loop):
-	    	messages = await message.channel.history(limit=100).flatten()
-	    	await message.channel.delete_messages(messages)
+			messages = await message.channel.history(limit=100).flatten()
+			await message.channel.delete_messages(messages)
 	elif msg.content == "No":
 	    await message.channel.send("Nevermind")
 	else:
