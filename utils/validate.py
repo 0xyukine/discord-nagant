@@ -10,6 +10,7 @@ def validate():
 		if os.listdir("res/") != sorted(files):
 			print("Creating files")
 			for file in list(set(files) - set(os.listdir("res/"))):
+				print(files,os.listdir("res/"),file)
 				open("res/{}".format(file), 'a').close()
 		return True
 	except:

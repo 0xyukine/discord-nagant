@@ -11,7 +11,7 @@ async def wipe(message, **kwargs):
 	msg = await client.wait_for('message', check=check)
 	if msg.content == "Yes":
 		if len(message.content.split(" ")) > 1 and message.content.split(" ")[1].isnumeric():
-			loop = messages.content.split(" ")[1]/100
+			loop = int(float(message.content.split(" ")[1])/100)
 		else:
 			loop = 1
 		for x in range(loop):

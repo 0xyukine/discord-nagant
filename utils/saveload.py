@@ -19,3 +19,17 @@ def load():
 		pass
 
 	return terms, tally, tags
+
+async def save(message, **kwargs):
+	try:
+		if "tally" in kwargs.keys():
+			with open('res/tally.json', 'w') as x:
+				json.dump(kwargs["tally"], x, indent=4)
+	except Exception as e:
+		print(e)
+	try:
+		if "tags" in kwargs.keys():
+			with open('res/tags.json', 'w') as x:
+				json.dump(kwargs["tags"], x, indent=4)
+	except Exception as e:
+		print(e)

@@ -7,8 +7,9 @@ import asyncio
 import discord
 import datetime
 import traceback
-from message_handles import *
+
 from utils import *
+from message_handles import *
 from dotenv import load_dotenv, find_dotenv
 
 TIME_START = time.time()
@@ -46,18 +47,11 @@ intents.members = True
 intents.presences = True
 client = discord.Client(intents=intents)
 
+#Validate persistent files and assign global variables
 validate.validate()
 TERMS, tallyDict, tagsDict = saveload.load()
 
-#Global variables
-#TERMS = []
-#tallyDict = {}
-#tagsDict = {}
-
-startpath = "/mnt/e/"
-startdirs = ["Stuff", "Manga"]
-file_list = []
-
+#Dictionary for commands and their associated method calls
 commands = {
     "$hello":[greeting.hello,"says hello, what'd you expect?"],
     "$JP":[japanese.start,"Random kana"],
@@ -68,10 +62,16 @@ commands = {
     "$tally":[tally.tally,"uhh tally stuffy"],
     "$tag":[tag.start,"tag media, see '$tag help' for usage"],
     ",":[tag.start,"calls a specific tag"],
-    "$roulette":[roulette.roulette, "probably pulls something illegal from my drive"]
+    "$roulette":[roulette.roulette, "probably pulls something illegal from my drive"],
+    "$save":[saveload.save, "exports current state of data structures"]
 }
 
 TIME_INIT = time.time() - TIME_START
+
+#Path and select directories for file compilation
+startpath = "/mnt/e/"
+startdirs = ["Stuff", "Manga"]
+file_list = []
 
 for item in startdirs:
     for dirpath, dirs, files in os.walk(startpath + item):
@@ -118,21 +118,24 @@ async def on_message(message):
     if message.author == client.user:
         return
     try:
-        if message.content.startswith("$") or message.content.startswith(",") and message.channel.id != idsDict["BOT_CHANNEL"]:
-            await message.channel.send("Please refrain from calling bot commands in non bot channel")
-        elif message.content.startswith("$"):
-            command = message.content.split()[0]
-            if message.content.startswith("$help"):
-                output = ""
-                for item in commands:
-                    output = output + "{}: {} \n".format(item, commands[item][1])
-                await message.channel.send(output)
-            elif command in commands.keys():
-                await commands[command][0](message, client=client, tally=tallyDict, TERMS=TERMS, tags=tagsDict, fl=file_list, ids=idsDict)
+        if message.content.startswith("$") or message.content.startswith(","):
+            if message.content.startswith("$") and message.channel.id != idsDict["BOT_CHANNEL"]:
+                await client.get_channel(idsDict["BOT_CHANNEL"]).send("Please refrain from calling bot commands in non bot channel {}".format(message.author.mention))
+            elif message.content.startswith("$"):
+                command = message.content.split()[0]
+                if message.content.startswith("$help"):
+                    output = ""
+                    for item in commands:
+                        output = output + "{}: {} \n".format(item, commands[item][1])
+                    await message.channel.send(output)
+                elif command in commands.keys():
+                    await commands[command][0](message, client=client, tally=tallyDict, TERMS=TERMS, tags=tagsDict, fl=file_list, ids=idsDict)
+            elif message.content.startswith(","):
+                await tag.start(message, client=client, tally=tallyDict, TERMS=TERMS, tags=tagsDict, fl=file_list, ids=idsDict)
+
             TIME_PROCESSED = time.time() - TIME_RECEIVED
-            await client.get_channel(idsDict["LOG_CHANNEL"]).send("Time command '{}' received: {} Message timestamp: {} Time to respond: {}".format(command, TIMESTAMP_RECEIVED, message.created_at.strftime("%Y-%m-%d %H:%M:%S"), TIME_PROCESSED))    
-        elif message.content.startswith(","):
-            await tag.start(message, client=client, tally=tallyDict, TERMS=TERMS, tags=tagsDict, fl=file_list, ids=idsDict)
+            await client.get_channel(idsDict["LOG_CHANNEL"]).send("Time command '{}' received: {} Message timestamp: {} Time to respond: {}"
+                .format(message.content.split()[0], TIMESTAMP_RECEIVED, message.created_at.strftime("%Y-%m-%d %H:%M:%S"), TIME_PROCESSED))    
     except NameError:
         await message.channel.send("Bot channel non-existant:\n{}\n{}".format(e, traceback.print_exc()))
     except Exception as e:
@@ -149,6 +152,7 @@ async def on_message(message):
 
 @client.event
 async def on_member_join(member):
-    await client.get_channel(958710298729140237).send("{} https://cdn.discordapp.com/attachments/958720490334199839/987711913070845992/Tyler-_EVERYONE_BOO_shorts.mp4".format(member.mention))
+    await client.get_channel(958710298729140237).send("{} https://cdn.discordapp.com/attachments/958720490334199839/987711913070845992/Tyler-_EVERYONE_BOO_shorts.mp4"
+        .format(member.mention))
 
 client.run(TOKEN)
