@@ -21,7 +21,7 @@ async def tag(message, criteria, tag=None, link=None, tags=None):
     if criteria == "help":
         await message.channel.send("$tag [help, list, add, remove] [tag] [link]\nGet tagged media by using ,[tag]")
     elif criteria == "list":
-        await message.channel.send(tags)
+        await message.channel.send(list(tags))
     elif criteria == "add" or "remove":
 	    if criteria == "add":
 	        if tag not in tags.keys():
