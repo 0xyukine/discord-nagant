@@ -1,5 +1,7 @@
 import os
 
+#List of files that are required for bot feature functionality
+#Any files listed not present in the res folder will be automatically created
 files = ['terms.txt', 'tally.json', 'tags.json', 'filesources.json', 'serverids.json']
 
 def validate():

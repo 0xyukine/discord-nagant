@@ -78,7 +78,7 @@ commands = {
 TIME_INIT = time.time() - TIME_START
 
 #Path and select directories for file compilation
-file_list = filecomp.comp("/mnt/e/", ["Stuff", "Manga"])
+file_list = filecomp.comp()
 
 TIME_FILES = time.time() - TIME_START
 
@@ -185,6 +185,7 @@ Slash Commands
 #Done by creating an embed per image
 #First embed takes any additional style or formatting
 #All embeds must use the same url
+#Total max image embeds: 10, max displayed: 4, anything over 10 will error
 
 @tree.command(description="Test embed", guild=discord.Object(id=idsDict["GUILD"]))
 async def embedtest(interaction: discord.Interaction):
@@ -192,13 +193,7 @@ async def embedtest(interaction: discord.Interaction):
     images = ["https://media.discordapp.net/attachments/993331059955601498/1038874633702744104/102160288_p0.png?width=568&height=676",
     "https://media.discordapp.net/attachments/993331059955601498/1038874634470297692/102239380_p0.png?width=568&height=676",
     "https://media.discordapp.net/attachments/993331059955601498/1038874622478778470/102214475_p0.png?width=568&height=676",
-    "https://media.discordapp.net/attachments/993331059955601498/1038874619144306768/101874010_p0.png?width=568&height=676",
-    "https://media.discordapp.net/attachments/993331059955601498/1038874602065113161/101743398_p0.png?width=568&height=676",
-    "https://media.discordapp.net/attachments/993331059955601498/1038874595660415076/101792151_p0.png?width=568&height=676",
-    "https://media.discordapp.net/attachments/993331059955601498/1038874589536727141/101981020_p0.png?width=568&height=676",
-    "https://media.discordapp.net/attachments/993331059955601498/1038874578904154132/101949970_p0.png?width=568&height=676",
-    "https://media.discordapp.net/attachments/993331059955601498/1038874638647840768/102262969_p0.png?width=568&height=676",
-    "https://media.discordapp.net/attachments/993331059955601498/1038874643303497758/102108972_p0.png?width=568&height=676"]
+    "https://media.discordapp.net/attachments/993331059955601498/1038874619144306768/101874010_p0.png?width=568&height=676"]
     embeds = []
 
     embed = discord.Embed(title="Multi image embed", description=f"Number of images: {len(images)}", url="https://yukine.moe")
@@ -208,18 +203,6 @@ async def embedtest(interaction: discord.Interaction):
         embed = discord.Embed(url="https://yukine.moe")
 
     await interaction.response.send_message(embeds=embeds)
-
-    # a = discord.Embed(url="https://yukine.moe")
-    # b = discord.Embed(url="https://yukine.moe")
-    # c = discord.Embed(url="https://yukine.moe")
-    # d = discord.Embed(url="https://yukine.moe")
-
-    # a.set_image(url="https://media.discordapp.net/attachments/993331059955601498/1038874633702744104/102160288_p0.png?width=568&height=676")
-    # b.set_image(url="https://media.discordapp.net/attachments/993331059955601498/1038874634470297692/102239380_p0.png?width=568&height=676")
-    # c.set_image(url="https://media.discordapp.net/attachments/993331059955601498/1038874622478778470/102214475_p0.png?width=568&height=676")
-    # d.set_image(url="https://media.discordapp.net/attachments/993331059955601498/1038874619144306768/101874010_p0.png?width=568&height=676")
-
-    # await interaction.response.send_message(embeds=[a,b,c,d])
 
 @tree.command(description="Test command", guild=discord.Object(id=idsDict["GUILD"]))
 async def test(interaction: discord.Interaction, a: str):

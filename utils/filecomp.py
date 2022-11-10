@@ -2,18 +2,15 @@ import os
 import re
 import json
 
-def comp(startpath, startdirs):
+def comp():
+    """
+    Compiles and returns a list of filepaths for local files,
+    values in filesources points to directories to walk through 
+    and provides blacklisted terms to be filtered out of the 
+    final list
+    """
+
     file_list = []
-    """
-    for item in startdirs:
-        for dirpath, dirs, files in os.walk(startpath + item):
-            for file in files:
-                if re.search("\.jpg|\.png|\.gif|\.webm|\.mp4", file):
-                    if "beast" in dirpath:
-                        pass
-                    else:
-                        file_list.append("{}/{}".format(dirpath, file))
-    """
     with open('res/filesources.json', 'r') as x:
         file_sources = json.load(x)
 
