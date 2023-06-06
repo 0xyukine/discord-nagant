@@ -254,6 +254,10 @@ async def userprofile(interaction: discord.Interaction, user:discord.Member=None
 
     await interaction.response.send_message(embed=embed)
 
+@tree.command(name="filetree", description="lists files accessible by the bot in regards to the roulette command", guild=discord.Object(id=idsDict["GUILD"]))
+async def filetree(interaction: discord.Interaction):
+    await interaction.response.send_message("```\n" + filecomp.tree() + "```")
+
 @tree.command(name="roulette", description="pulls a random file from the host's local storage", guild=discord.Object(id=idsDict["GUILD"]))
 async def roulette(interaction: discord.Interaction, count: int = 1, type: str = "All", filter: str = ""):
 
@@ -268,6 +272,7 @@ async def roulette(interaction: discord.Interaction, count: int = 1, type: str =
 
         img_filter = re.compile(".*{}.*\.(jpg|jpeg|png|apng|gif|webp)$".format(filter))
         vid_filter = re.compile(".*{}.*\.(mp4|mkv|mov|3gp|webm)$".format(filter))
+        gif_filter = re.compile(".*{}.*\.(apng|gif)$".format(filter))
 
         temp_list = file_list
 
@@ -277,6 +282,8 @@ async def roulette(interaction: discord.Interaction, count: int = 1, type: str =
                 ex = img_filter
             if type == "Video":
                 ex = vid_filter
+            if type == "GIF":
+                ex = gif_filter
             if type == "All":
                 ex = re.compile(".*{}.*".format(filter))
 
@@ -301,14 +308,17 @@ async def roulette(interaction: discord.Interaction, count: int = 1, type: str =
         else:
             return({'content':"unknown filetype"})
 
-    await interaction.followup.send(**genresponse(count, type, filter))
+    try:
+        await interaction.followup.send(**genresponse(count, type, filter))
+    except IndexError:
+        await interaction.followup.send("No file matches")
     
     for x in range(count-1):
         await client.get_channel(interaction.channel_id).send(**genresponse(count, type, filter))
 
 @roulette.autocomplete('type')
 async def types_autocomplete(interaction: discord.Interaction, current: str,):
-    types = ['Any', 'Video', 'Image']
+    types = ['All', 'Video', 'Image', 'GIF']
     return [
         app_commands.Choice(name=type, value=type)
         for type in types if current.lower() in type.lower()
