@@ -2,7 +2,7 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from typing import Literal
+from typing import Literal, NamedTuple
 
 import random
 import json
@@ -35,26 +35,21 @@ img_filter = re.compile(".*{}.*\.(jpg|jpeg|png|apng|gif|webp)$".format(filter))
 vid_filter = re.compile(".*{}.*\.(mp4|mkv|mov|3gp|webm)$".format(filter))
 gif_filter = re.compile(".*{}.*\.(apng|gif)$".format(filter))
 
+# class RouletteParams(NamedTuple):
+#     count: int = 1
+#     filter: str = ""
+#     embed: Literal['false', 'true'] = 'false'
+#     filesize: app_commands.Range[int, 0, 26214400] = 8388608
+
 class MyGroup(app_commands.Group):
     @app_commands.command()
-    @app_commands.describe(count="Numbers of files to send at once", filter="Phrase to restrict files returned to", embed="Separate posting and additional information", filesize="Maximum filesize limit, default 8MB, hard limit 25MB, bigger limits will slow down returns")
-    async def all(self, ctx, count: int=1, filter: str="", embed: Literal['false', 'true'] = 'false', filesize: app_commands.Range[int, 0, 26214400] = 8388608):
+    @app_commands.describe(count="Numbers of files to send at once", filter="Phrase to restrict files returned to", is_embed="Separate posting and additional information", filesize="Maximum filesize limit, default 8MB, hard limit 25MB, bigger limits will slow down returns")
+    async def all(self, ctx, count: int=1, filter: str="", is_embed: Literal['false', 'true'] = 'false', filesize: app_commands.Range[int, 0, 26214400] = 8388608):
         await ctx.response.defer(thinking=True)
-        if embed == "false":
-            files = []
-            for x in range(count):
-                files.append(get_file("all", count, filter, filesize)["file"])
-            print(files)
-            await ctx.followup.send(files=files)
-        elif embed == "true":
-            await ctx.followup.send(**get_file("all", count, filter))
-            for x in range(count-1):
-                await ctx.channel.send(**get_file("all", count, filter))
-        else:
-            await ctx.followup.send("embed issue")
+        await get_file(ctx, "all", count, filter, is_embed, filesize)
 
     @app_commands.command()
-    async def video(self, ctx, count: int=1, filter: str=""):
+    async def video(self, ctx):
         await ctx.response.defer(thinking=True)
         if embed == "false":
             files = []
@@ -101,7 +96,8 @@ class MyGroup(app_commands.Group):
         else:
             await ctx.followup.send("embed issue")
 
-def get_file(file_type, count, filter, filesize):
+async def get_file(ctx, file_type, count, filter, is_embed, filesize):
+    print(file_type, count, filter, is_embed, filesize)
     print("Getting file")
     temp_list = file_list
 
@@ -121,17 +117,32 @@ def get_file(file_type, count, filter, filesize):
             if re.search(ex, file):
                 temp_list.append(file)
 
-    while True:
-        filepath = random.choice(temp_list)
-        print(filepath)
-        if os.path.getsize(filepath) < filesize:
-            break
+    files = []
 
-    file = discord.File(filepath)
-    embed = discord.Embed(title=filepath.split("/")[-1], description="/".join(filepath.split("/")[3:-1]))
-    embed.set_author(name="Anchovy", url="https://www.youtube.com/watch?v=oczQbHlfvg0", icon_url="https://img3.gelbooru.com//samples/02/f8/sample_02f8c86b66ad0487eca49f54565f0675.jpg")
-    embed.set_image(url="attachment://{}".format(filepath.split("/")[-1]))
-    return({'file':file,'embed':embed})
+    for x in range(count):
+        print(f"loop: {x}")
+        while True:
+            filepath = random.choice(temp_list)
+            print(filepath)
+            if os.path.getsize(filepath) < filesize:
+                break
+
+        file = discord.File(filepath)
+        embed = discord.Embed(title=filepath.split("/")[-1], description="/".join(filepath.split("/")[3:-1]))
+        embed.set_author(name="Anchovy", url="https://www.youtube.com/watch?v=oczQbHlfvg0", icon_url="https://img3.gelbooru.com//samples/02/f8/sample_02f8c86b66ad0487eca49f54565f0675.jpg")
+        embed.set_image(url="attachment://{}".format(filepath.split("/")[-1]))
+        # return({'file':file,'embed':embed})
+
+        files.append(file)
+
+    if is_embed == "true":
+        print("AAAAAAAAAAAAAAAAAA")
+        await ctx.followup.send(file=files[0], embed=embed)
+        for x in range(len(files[1:])):
+            await ctx.channel.send(file=files[1:][x], embed=embed)
+    elif is_embed == "false":
+        print("BBBBBBBBBBBBBBBBBBBBBBB")
+        await ctx.followup.send(files=files)
 
 async def setup(bot):
-    bot.tree.add_command(MyGroup(name="roulette", description="pull random file"), guild=MY_GUILD)
+    bot.tree.add_command(MyGroup(name="roulette", description="Pulls a random file from local storage"), guild=MY_GUILD)
