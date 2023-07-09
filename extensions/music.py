@@ -2,15 +2,24 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-import ffmpeg
+import random
+import eyed3
 import json
 import os
+import re
 
 with open('config.json', 'r') as config:
     config = json.load(config)
 
 MY_GUILD = discord.Object(id=config['guild'])
-        
+
+music_files = []
+
+for dir_path, dirs, files in os.walk('/music'):
+    for file in files:
+        if re.search('\.(mp3|flac)', file):
+            music_files.append(f'{dir_path}/{file}')
+
 class MyGroup(app_commands.Group):
     @app_commands.command()
     async def join(self, ctx, *, input_channel: discord.VoiceChannel = None):
@@ -32,14 +41,26 @@ class MyGroup(app_commands.Group):
         await ctx.response.send_message("Leaving...")
 
     @app_commands.command()
-    async def play(self, ctx):
-        #hard coded music file :p
-        song = '/mnt/e/Stuff/RADIANT_FORCE.flac'
-        source = source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(song))
-        ctx.guild.voice_client.play(source)
+    async def play(self, ctx, music_search: str = None):
+        async def play_random_song(self, ctx, music_search):
+            temp_list = []
+            if music_search:
+                for file in music_files:
+                    if re.search(f'.*{music_search}.*', file):
+                        temp_list.append(file)
+            
+            if not temp_list:
+                temp_list = music_files
 
-        await ctx.response.send_message("Playing...")
-    
+            song = random.choice(temp_list)
+            source = source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(song))
+            ctx.guild.voice_client.play(source)
+            await ctx.channel.send(f"Currently playing {os.path.split(song)[-1]}...")
+
+
+        await ctx.response.send_message(f"Now playing")
+        await play_random_song(self, ctx, music_search)
+            
     @app_commands.command()
     async def pause(self, ctx):
         ctx.guild.voice_client.pause()

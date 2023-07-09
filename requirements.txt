@@ -1,5 +1,5 @@
 requests
 discord.py[voice]
 python-dotenv
-ffmpeg
 opuslib
+eyeD3
