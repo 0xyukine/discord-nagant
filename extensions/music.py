@@ -10,14 +10,6 @@ import json
 import os
 import re
 
-
-# song = '/music/Hyouka Original Soundtrack/02-06 心に静寂と平和を.flac'
-# pattern = re.compile("Duration:\s*([^\n\r]*[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2})", flags=re.M)
-# song_info = subprocess.check_output(['ffprobe','-i', song], text=True, encoding='utf8', stderr=subprocess.STDOUT)#.encode('utf-8').decode()
-# # # song_info = "   lib aifhas libkhasfkhsa ahofhaofsa lib ahofhsao "
-# # pattern = re.compile("lib", flags=re.MULTILINE)
-# print(re.search(pattern, song_info).group(1))
-
 with open('config.json', 'r') as config:
     config = json.load(config)
 
@@ -37,18 +29,18 @@ class MyGroup(app_commands.Group):
             if ctx.user.voice:
                 print("User in voice channel")
                 await ctx.user.voice.channel.connect()
-                await ctx.response.send_message(f"Joining {ctx.user.name} in {ctx.user.voice.channel}")
+                await ctx.response.send_message(f"Joining {ctx.user.name} in {ctx.user.voice.channel}", delete_after=20)
             elif input_channel:
                 print("Joining user specified channel")
                 await input_channel.connect()
-                await ctx.response.send_message(f"Joining {input_channel}...")
+                await ctx.response.send_message(f"Joining {input_channel}...", delete_after=20)
             else:
-                await ctx.response.send_message("User not in voice channel or did not specify channel to join")
+                await ctx.response.send_message("User not in voice channel or did not specify channel to join", delete_after=20)
 
     @app_commands.command()
     async def leave(self, ctx):
         await ctx.guild.voice_client.disconnect()
-        await ctx.response.send_message("Leaving...")
+        await ctx.response.send_message("Leaving...", delete_after=20)
 
     @app_commands.command()
     async def play(self, ctx, music_search: str = None):
@@ -56,31 +48,26 @@ class MyGroup(app_commands.Group):
             temp_list = []
             if music_search:
                 for file in music_files:
-                    if re.search(f'.*{music_search}.*', file):
+                    if re.search(f'.*{music_search}.*', file, flags=re.IGNORECASE):
                         temp_list.append(file)
             
             if not temp_list:
                 temp_list = music_files
 
             song = random.choice(temp_list)
-            source = source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(song))
+            source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(song))
             ctx.guild.voice_client.play(source)
 
             try:
-                # os.system(f'ffmpeg -y -i "{song}" -an -c:v copy /temp/thumbnail.jpg')
-                # out = subprocess.check_output(f'ffmpeg -y -i {song} -an -c:v copy /temp/thumbnail.jpg'.split(" "))
-                out = subprocess.check_output(['ffmpeg', '-y', '-i', song, '-an', '-c:v', 'copy', '/temp/thumbnail.jpg'], text=True)
-                if "does not contain any stream" in out:
-                    raise Exception("no thumbnail")
+                #Excepts if audio file doesn't have a thumbnail
+                thumb_check = subprocess.run(['ffmpeg', '-y', '-i', song, '-an', '-c:v', 'copy', '/temp/thumbnail.jpg'], text=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
                 thumbnail = discord.File('/temp/thumbnail.jpg', filename='thumb.jpg')
-            except Exception as e:
-                print(e)
-                print(traceback.format_exc())
+            except subprocess.CalledProcessError:
                 thumbnail = discord.File('/mnt/e/Stuff/dfn.jpg', filename='thumb.jpg')
 
-            # pattern = re.compile('[\n\r].*Duration:\s*([^\n\r]*[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2})')
+            #Get audio duration from ffprobe output
             pattern = re.compile("Duration:\s*([^\n\r]*[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2})")
-            song_info = subprocess.check_output(['ffprobe','-i', song], text=True, encoding='utf8', stderr=subprocess.STDOUT)
+            song_info = str(subprocess.run(['ffprobe','-i', song], capture_output=True, text=True))
             song_length = ":".join(re.search(pattern, song_info).group(1).split(":")[1:])
 
             embed = discord.Embed(title=os.path.split(song)[-1], description=f'00:00 / {song_length}')
@@ -88,21 +75,19 @@ class MyGroup(app_commands.Group):
             embed = embed.set_thumbnail(url='attachment://thumb.jpg')
             embed = embed.set_footer(text=song)
 
-            # await ctx.channel.send(f"Currently playing {os.path.split(song)[-1]}...")
             await ctx.response.send_message(file=thumbnail, embed=embed)
 
-        # await ctx.response.send_message(f"Now playing")
         await play_random_song(self, ctx, music_search)
             
     @app_commands.command()
     async def pause(self, ctx):
         ctx.guild.voice_client.pause()
-        await ctx.response.send_message("Music paused")
+        await ctx.response.send_message("Music paused", delete_after=20)
     
     @app_commands.command()
     async def resume(self, ctx):
         ctx.guild.voice_client.resume()
-        await ctx.response.send_message("Music resumed")
+        await ctx.response.send_message("Music resumed", delete_after=20)
 
 async def setup(bot):
     bot.tree.add_command(MyGroup(name="music"), guild=MY_GUILD)
