@@ -25,10 +25,54 @@ for dir_path, dirs, files in os.walk('/music'):
         if re.search('\.(mp3|flac)', file):
             music_files.append(f'{dir_path}/{file}')
 
+class MusicSource(discord.PCMVolumeTransformer):
+    def __init__(self, source, *, user, fn):
+        super().__init__(source)
+        self.user = user
+        self.fn = fn
+
+    @classmethod
+    async def create_source(cls, ctx, music_search: str):
+        temp_list = []
+        if music_search:
+            for file in music_files:
+                if re.search(f'.*{music_search}.*', file, flags=re.IGNORECASE):
+                    temp_list.append(file)
+        
+        if not temp_list:
+            temp_list = music_files
+
+        song_fn = random.choice(temp_list)
+        print(song_fn)
+    
+        return cls(discord.FFmpegPCMAudio(song_fn), user=ctx.user.display_name, fn=song_fn)
+
+    @staticmethod
+    async def create_embed(song):
+        try:
+            #Excepts if audio file doesn't have a thumbnail
+            thumb_check = subprocess.run(['ffmpeg', '-y', '-i', song, '-an', '-c:v', 'copy', '/temp/thumbnail.jpg'], text=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            thumbnail = discord.File('/temp/thumbnail.jpg', filename='thumb.jpg')
+        except subprocess.CalledProcessError:
+            thumbnail = discord.File('/mnt/e/Stuff/dfn.jpg', filename='thumb.jpg')
+
+        #Get audio duration from ffprobe output
+        pattern = re.compile("Duration:\s*([^\n\r]*[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2})")
+        song_info = str(subprocess.run(['ffprobe','-i', song], capture_output=True, text=True))
+        song_length = ":".join(re.search(pattern, song_info).group(1).split(":")[1:])
+
+        embed = discord.Embed(title=os.path.split(song)[-1], description=f'00:00 / {song_length}')
+        embed = embed.set_author(name='Nagant Player')
+        embed = embed.set_thumbnail(url='attachment://thumb.jpg')
+        embed = embed.set_footer(text=song)
+
+        return {"embed":embed,"file":thumbnail}
+
 class MusicPlayer:
     def __init__(self, ctx):
         self.bot = ctx.client
         self._guild = ctx.guild
+        self._channel = ctx.channel
 
         self.queue = asyncio.Queue()
         self.next = asyncio.Event()
@@ -42,44 +86,41 @@ class MusicPlayer:
         ctx.client.loop.create_task(self.player_loop())
 
     async def player_loop(self):
-        print("waiting until ready")
         await self.bot.wait_until_ready()
-        print(self.queue._queue)
+
         while not self.bot.is_closed():
-            print(f"loop q print{self.queue._queue}")
-            print("next clear")
             self.next.clear()
 
             try:
                 async with timeout(300):
-                    print("self queue get")
-                    print(f"queue before get {self.queue._queue}")
                     source = await self.queue.get()
-                    print(source)
-                    print(f"queue after get {self.queue._queue}")
             except asyncio.TimeoutError:
-                print("destroying")
-                return self.destroy()
+                # print("destroying")
+                # return self.destroy()
+                self._guild.voice_client.disconnect()
             except exception as e:
                 print("e")
 
-            print("aAAAAAAAAAAAAAaaaaaa")
             source.volume = self.volume
 
             self.current = source
 
             print("playing current")
             self._guild.voice_client.play(source, after=lambda _:self.bot.loop.call_soon_threadsafe(self.next.set))
-            print("next wait")
+            await self._channel.send(**await MusicSource.create_embed(source.fn))
             await self.next.wait()
 
             self.current = None
 
-class MyGroup(app_commands.Group):
-    @app_commands.command()
-    async def test(self, ctx):
-        self.player = MusicPlayer(ctx)
-        await ctx.response.send_message("creating player", delete_after=20)
+class Music(app_commands.Group):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.player = None
+
+    def get_player(self, ctx):
+        if self.player is None:
+            self.player = MusicPlayer(ctx)
+        return self.player
 
     @app_commands.command()
     async def join(self, ctx, *, input_channel: discord.VoiceChannel = None):
@@ -96,26 +137,25 @@ class MyGroup(app_commands.Group):
                 await ctx.response.send_message("User not in voice channel or did not specify channel to join", delete_after=20)
 
     @app_commands.command()
+    async def search(self, ctx, search_term: str):
+        temp_list = []
+        if music_search:
+            for file in music_files:
+                if re.search(f'.*{music_term}.*', file, flags=re.IGNORECASE):
+                    temp_list.append(file)
+        
+        if not temp_list:
+            temp_list = music_files
+
+    @app_commands.command()
     async def leave(self, ctx):
         await ctx.guild.voice_client.disconnect()
         await ctx.response.send_message("Leaving...", delete_after=20)
 
     @app_commands.command()
     async def play(self, ctx, music_search: str = None):
-        temp_list = []
-        if music_search:
-            for file in music_files:
-                if re.search(f'.*{music_search}.*', file, flags=re.IGNORECASE):
-                    temp_list.append(file)
-        
-        if not temp_list:
-            temp_list = music_files
-
-        song = random.choice(temp_list)
-        print(song)
-        source = discord.PCMVolumeTransformer(discord.FFmpegPCMAudio(song))
-        await self.player.queue.put(source)
-        print(f"play q print{self.player.queue._queue}")
+        source = await MusicSource.create_source(ctx, music_search)
+        await self.get_player(ctx).queue.put(source)
         await ctx.response.send_message("adding to queue", delete_after=20)
     
     @app_commands.command()
@@ -133,4 +173,4 @@ class MyGroup(app_commands.Group):
         await ctx.response.send_message("Music resumed", delete_after=20)
 
 async def setup(bot):
-    bot.tree.add_command(MyGroup(name="music"), guild=MY_GUILD)
+    bot.tree.add_command(Music(name="music"), guild=MY_GUILD)
