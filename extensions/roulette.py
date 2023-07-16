@@ -36,7 +36,7 @@ param_desc = {"count":"Numbers of files to send at once",
         "is_embed":"Separate posting and additional information", 
         "filesize":"Maximum filesize limit, default 8MB, hard limit 25MB, bigger limits will slow down returns"}
 
-class MyGroup(app_commands.Group):
+class Roulette(app_commands.Group):
     @app_commands.command()
     @app_commands.rename(is_embed='embed')
     @app_commands.describe(**param_desc)
@@ -119,4 +119,4 @@ async def get_file(ctx, file_type, count, filter, is_embed, filesize):
     return
 
 async def setup(bot):
-    bot.tree.add_command(MyGroup(name="roulette"), guild=MY_GUILD)
+    bot.tree.add_command(Roulette(name="roulette"), guild=MY_GUILD)

@@ -97,7 +97,7 @@ class MusicPlayer:
             except asyncio.TimeoutError:
                 # print("destroying")
                 # return self.destroy()
-                self._guild.voice_client.disconnect()
+                await self._guild.voice_client.disconnect()
             except exception as e:
                 print("e")
 
@@ -111,6 +111,42 @@ class MusicPlayer:
             await self.next.wait()
 
             self.current = None
+
+class Pagination(discord.ui.View):
+    def __init__(self, interaction: discord.Interaction, music_files, increment):
+        super().__init__(timeout=30)
+        self._ctx = interaction
+        self.mf = music_files
+        self.increment = increment
+        self.offset = 0
+
+    @discord.ui.button(label="<<<", style=discord.ButtonStyle.primary, custom_id="pag_forward")
+    async def forward(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.offset -= self.increment
+        print(f"-100 {self.offset}")
+        await self.pagination_result()
+
+    @discord.ui.button(label=">>>", style=discord.ButtonStyle.primary, custom_id="pag_backward")
+    async def backward(self, interaction: discord.Interaction, button: discord.ui.Button):
+        self.offset += self.increment
+        print(f"+100 {self.offset}")
+        await self.pagination_result()
+
+    @staticmethod
+    async def pagination_result():
+        original = await self._ctx.original_response()
+        t_mf = self.mf[self.offset:]
+        m_files = "\n".join(f"{os.path.split(m_file)[0]}/**{os.path.split(m_file)[1]}**" for m_file in t_mf[:increment])
+        embed = discord.Embed(title="Search", description=m_files)
+        await original.edit(embed=embed)
+
+    # async def interaction_check(self, interaction: discord.Interaction):
+    #     pass
+
+    async def on_timeout(self):
+        print("timed out")
+        original = await self._ctx.original_response()
+        await original.edit(view=None)
 
 class Music(app_commands.Group):
     def __init__(self, *args, **kwargs):
@@ -138,14 +174,40 @@ class Music(app_commands.Group):
 
     @app_commands.command()
     async def search(self, ctx, search_term: str):
+        await ctx.response.defer(thinking=True)
         temp_list = []
-        if music_search:
-            for file in music_files:
-                if re.search(f'.*{music_term}.*', file, flags=re.IGNORECASE):
-                    temp_list.append(file)
+        for file in music_files:
+            if re.search(f'.*{search_term}.*', file, flags=re.IGNORECASE):
+                temp_list.append(file)
         
         if not temp_list:
-            temp_list = music_files
+            return await ctx.followup.send("No matching files found", delete_after=20)
+        else:
+            m_files = "\n".join(f"{os.path.split(m_file)[0]}/**{os.path.split(m_file)[1]}**" for m_file in temp_list)
+            # m_files = "```" + m_files[:1900] + "```"
+            embed = discord.Embed(title="Search", description=m_files[:4000])
+            # navigation = discord.ui.View()
+            # navigation.add_item(discord.ui.Button(label="<<<", style=discord.ButtonStyle.primary, custom_id="left"))
+            # navigation.add_item(discord.ui.Button(label=">>>", style=discord.ButtonStyle.primary, custom_id="right"))
+            message = await ctx.followup.send(embed=embed, view=Pagination(ctx, temp_list, 30))
+
+            # await navigation.wait()
+            # if navigation.value == "left":
+            #     print("left")
+            # elif navigation.value == "right":
+            #     print("right")
+            # else:
+            #     print("idk")
+
+            # async def interaction_check(self, interaction: discord.Interaction):
+            #     print("interaction")
+            #     print(interaction.id)
+            #     if interaction.id == "left":
+            #         print("left")
+            #     elif interaction.id == "right":
+            #         print("right")
+            #     else:
+            #         print("uh oh")
 
     @app_commands.command()
     async def leave(self, ctx):
