@@ -113,7 +113,7 @@ class MusicPlayer:
             self.current = None
 
 class Pagination(discord.ui.View):
-    def __init__(self, interaction: discord.Interaction, music_files, increment):
+    def __init__(self, interaction: discord.Interaction, music_files, increment=10):
         super().__init__(timeout=30)
         self._ctx = interaction
         self.mf = music_files
@@ -122,23 +122,32 @@ class Pagination(discord.ui.View):
 
     @discord.ui.button(label="<<<", style=discord.ButtonStyle.primary, custom_id="pag_forward")
     async def forward(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
         self.offset -= self.increment
         print(f"-100 {self.offset}")
-        await self.pagination_result()
+        embed = await self.pagination_result(self.mf, self.offset, self.increment)
+        # await self.original.edit(embed=embed)
+        original = await interaction.original_response()
+        await interaction.followup.edit_message(message_id=original.id, embed=embed)
 
     @discord.ui.button(label=">>>", style=discord.ButtonStyle.primary, custom_id="pag_backward")
     async def backward(self, interaction: discord.Interaction, button: discord.ui.Button):
+        await interaction.response.defer()
         self.offset += self.increment
         print(f"+100 {self.offset}")
-        await self.pagination_result()
+        embed = await self.pagination_result(self.mf, self.offset, self.increment)
+        # await self.original.edit(embed=embed)
+        original = await interaction.original_response()
+        await interaction.followup.edit_message(message_id=original.id, embed=embed)
 
     @staticmethod
-    async def pagination_result():
-        original = await self._ctx.original_response()
-        t_mf = self.mf[self.offset:]
-        m_files = "\n".join(f"{os.path.split(m_file)[0]}/**{os.path.split(m_file)[1]}**" for m_file in t_mf[:increment])
-        embed = discord.Embed(title="Search", description=m_files)
-        await original.edit(embed=embed)
+    async def pagination_result(music_files, offset, increment=10):
+        temp_music_files = music_files[offset:]
+        m_files = "\n".join(f"{os.path.split(m_file)[0]}/**{os.path.split(m_file)[1]}**" for m_file in temp_music_files[:increment])
+        print(m_files)
+        print(len(m_files))
+        embed = discord.Embed(title=f"Search {offset}/{len(music_files)}", description=m_files)
+        return embed
 
     # async def interaction_check(self, interaction: discord.Interaction):
     #     pass
@@ -183,31 +192,33 @@ class Music(app_commands.Group):
         if not temp_list:
             return await ctx.followup.send("No matching files found", delete_after=20)
         else:
-            m_files = "\n".join(f"{os.path.split(m_file)[0]}/**{os.path.split(m_file)[1]}**" for m_file in temp_list)
-            # m_files = "```" + m_files[:1900] + "```"
-            embed = discord.Embed(title="Search", description=m_files[:4000])
-            # navigation = discord.ui.View()
-            # navigation.add_item(discord.ui.Button(label="<<<", style=discord.ButtonStyle.primary, custom_id="left"))
-            # navigation.add_item(discord.ui.Button(label=">>>", style=discord.ButtonStyle.primary, custom_id="right"))
-            message = await ctx.followup.send(embed=embed, view=Pagination(ctx, temp_list, 30))
+            embed = await Pagination.pagination_result(temp_list, 0)
+            await ctx.followup.send(embed=embed, view=Pagination(ctx, temp_list, 10))
+            # m_files = "\n".join(f"{os.path.split(m_file)[0]}/**{os.path.split(m_file)[1]}**" for m_file in temp_list)
+            # # m_files = "```" + m_files[:1900] + "```"
+            # embed = discord.Embed(title="Search", description=m_files[:4000])
+            # # navigation = discord.ui.View()
+            # # navigation.add_item(discord.ui.Button(label="<<<", style=discord.ButtonStyle.primary, custom_id="left"))
+            # # navigation.add_item(discord.ui.Button(label=">>>", style=discord.ButtonStyle.primary, custom_id="right"))
+            # message = await ctx.followup.send(embed=embed, view=Pagination(ctx, temp_list, 30))
 
-            # await navigation.wait()
-            # if navigation.value == "left":
-            #     print("left")
-            # elif navigation.value == "right":
-            #     print("right")
-            # else:
-            #     print("idk")
+            # # await navigation.wait()
+            # # if navigation.value == "left":
+            # #     print("left")
+            # # elif navigation.value == "right":
+            # #     print("right")
+            # # else:
+            # #     print("idk")
 
-            # async def interaction_check(self, interaction: discord.Interaction):
-            #     print("interaction")
-            #     print(interaction.id)
-            #     if interaction.id == "left":
-            #         print("left")
-            #     elif interaction.id == "right":
-            #         print("right")
-            #     else:
-            #         print("uh oh")
+            # # async def interaction_check(self, interaction: discord.Interaction):
+            # #     print("interaction")
+            # #     print(interaction.id)
+            # #     if interaction.id == "left":
+            # #         print("left")
+            # #     elif interaction.id == "right":
+            # #         print("right")
+            # #     else:
+            # #         print("uh oh")
 
     @app_commands.command()
     async def leave(self, ctx):
