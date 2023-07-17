@@ -69,10 +69,11 @@ class MusicSource(discord.PCMVolumeTransformer):
         return {"embed":embed,"file":thumbnail}
 
 class MusicPlayer:
-    def __init__(self, ctx):
+    def __init__(self, ctx, _Music):
         self.bot = ctx.client
         self._guild = ctx.guild
         self._channel = ctx.channel
+        self._Music = _Music
 
         self.queue = asyncio.Queue()
         self.next = asyncio.Event()
@@ -95,9 +96,8 @@ class MusicPlayer:
                 async with timeout(300):
                     source = await self.queue.get()
             except asyncio.TimeoutError:
-                # print("destroying")
-                # return self.destroy()
-                await self._guild.voice_client.disconnect()
+                # return await self._guild.voice_client.disconnect()
+                return self.bot.loop.create_task(Music.cleanup(self._guild, self._Music))
             except exception as e:
                 print("e")
 
@@ -124,30 +124,29 @@ class Pagination(discord.ui.View):
     async def forward(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.offset -= self.increment
-        print(f"-100 {self.offset}")
-        embed = await self.pagination_result(self.mf, self.offset, self.increment)
-        # await self.original.edit(embed=embed)
-        original = await interaction.original_response()
-        await interaction.followup.edit_message(message_id=original.id, embed=embed)
+        await self.pagination_result(self.mf, self.offset, self.increment, interaction)
 
     @discord.ui.button(label=">>>", style=discord.ButtonStyle.primary, custom_id="pag_backward")
     async def backward(self, interaction: discord.Interaction, button: discord.ui.Button):
         await interaction.response.defer()
         self.offset += self.increment
-        print(f"+100 {self.offset}")
-        embed = await self.pagination_result(self.mf, self.offset, self.increment)
-        # await self.original.edit(embed=embed)
-        original = await interaction.original_response()
-        await interaction.followup.edit_message(message_id=original.id, embed=embed)
+        await self.pagination_result(self.mf, self.offset, self.increment, interaction)
 
     @staticmethod
-    async def pagination_result(music_files, offset, increment=10):
+    async def pagination_result(music_files, offset, increment=10, interaction: discord.Interaction = None):
         temp_music_files = music_files[offset:]
         m_files = "\n".join(f"{os.path.split(m_file)[0]}/**{os.path.split(m_file)[1]}**" for m_file in temp_music_files[:increment])
         print(m_files)
         print(len(m_files))
         embed = discord.Embed(title=f"Search {offset}/{len(music_files)}", description=m_files)
-        return embed
+
+        if interaction == None:
+            return embed
+        elif isinstance(interaction, discord.Interaction):
+            original = await interaction.original_response()
+            await interaction.followup.edit_message(message_id=original.id, embed=embed)
+        else:
+            print("idk man")
 
     # async def interaction_check(self, interaction: discord.Interaction):
     #     pass
@@ -163,9 +162,16 @@ class Music(app_commands.Group):
         self.player = None
 
     def get_player(self, ctx):
-        if self.player is None:
-            self.player = MusicPlayer(ctx)
+        try:
+            if self.player is None:
+                self.player = MusicPlayer(ctx, self)
+        except AttributeError:
+            self.player = MusicPlayer(ctx, self)
         return self.player
+
+    async def cleanup(_guild, _Music):
+        await _guild.voice_client.disconnect()
+        del _Music.player
 
     @app_commands.command()
     async def join(self, ctx, *, input_channel: discord.VoiceChannel = None):
@@ -194,31 +200,6 @@ class Music(app_commands.Group):
         else:
             embed = await Pagination.pagination_result(temp_list, 0)
             await ctx.followup.send(embed=embed, view=Pagination(ctx, temp_list, 10))
-            # m_files = "\n".join(f"{os.path.split(m_file)[0]}/**{os.path.split(m_file)[1]}**" for m_file in temp_list)
-            # # m_files = "```" + m_files[:1900] + "```"
-            # embed = discord.Embed(title="Search", description=m_files[:4000])
-            # # navigation = discord.ui.View()
-            # # navigation.add_item(discord.ui.Button(label="<<<", style=discord.ButtonStyle.primary, custom_id="left"))
-            # # navigation.add_item(discord.ui.Button(label=">>>", style=discord.ButtonStyle.primary, custom_id="right"))
-            # message = await ctx.followup.send(embed=embed, view=Pagination(ctx, temp_list, 30))
-
-            # # await navigation.wait()
-            # # if navigation.value == "left":
-            # #     print("left")
-            # # elif navigation.value == "right":
-            # #     print("right")
-            # # else:
-            # #     print("idk")
-
-            # # async def interaction_check(self, interaction: discord.Interaction):
-            # #     print("interaction")
-            # #     print(interaction.id)
-            # #     if interaction.id == "left":
-            # #         print("left")
-            # #     elif interaction.id == "right":
-            # #         print("right")
-            # #     else:
-            # #         print("uh oh")
 
     @app_commands.command()
     async def leave(self, ctx):
