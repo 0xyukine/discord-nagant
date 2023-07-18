@@ -45,9 +45,10 @@ async def on_ready():
     #     discord.opus.load_opus('opus')
 
     if not bot.synced:
-        await bot.load_extension('extensions.hello')
+        # await bot.load_extension('extensions.hello')
         # await bot.load_extension('extensions.roulette')
-        await bot.load_extension('extensions.music')
+        # await bot.load_extension('extensions.music')
+        await bot.load_extension('extensions.speechbubble')
         await bot.tree.sync(guild=MY_GUILD)
         bot.synced = True
 
