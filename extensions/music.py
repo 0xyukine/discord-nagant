@@ -54,7 +54,7 @@ class MusicSource(discord.PCMVolumeTransformer):
             thumb_check = subprocess.run(['ffmpeg', '-y', '-i', song, '-an', '-c:v', 'copy', '/temp/thumbnail.jpg'], text=True, check=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
             thumbnail = discord.File('/temp/thumbnail.jpg', filename='thumb.jpg')
         except subprocess.CalledProcessError:
-            thumbnail = discord.File('/mnt/e/Stuff/dfn.jpg', filename='thumb.jpg')
+            thumbnail = discord.File('/mnt/e/Stuff/Res/default_thumbnail.jpg', filename='thumb.jpg')
 
         #Get audio duration from ffprobe output
         pattern = re.compile("Duration:\s*([^\n\r]*[0-9]{1,2}:[0-9]{1,2}:[0-9]{1,2})")

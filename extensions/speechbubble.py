@@ -24,7 +24,7 @@ async def bubbleify(interaction: discord.Interaction, _file: discord.Attachment)
         await _file.save(s_img_path)                                #Save discord image locally
 
         #Read local images into PIL
-        b_img = Image.open("/mnt/e/Stuff/bubble.jpg")               #Bubble image
+        b_img = Image.open("/mnt/e/Stuff/Res/bubble.jpg")               #Bubble image
         s_img = Image.open(s_img_path)                              #Sent image
 
         new_height = int(b_img.height / b_img.width * s_img.width)  #Scale change in width with height
@@ -53,7 +53,7 @@ async def bubbleify(interaction: discord.Interaction, _file: discord.Attachment)
                 new.paste(b_img)
                 new.paste(s_img,(0,b_img.height))
                 frames.append(new)
-            frames[0].save(f"/temp/spb_image.{file_type}", save_all=True, duration=100, loop=0, append_images=frames[1:])
+            frames[0].save(f"/temp/spb_image.{file_type}", save_all=True, duration=40, loop=0, append_images=frames[1:])
         else:
             await interaction.followup.send("Unknwon error occurred")
         
@@ -74,7 +74,7 @@ async def goodness(interaction: discord.Interaction, _file: discord.Attachment):
         await _file.save(s_img_path)
 
         #Read local images into PIL
-        g_img = Image.open("/mnt/e/Stuff/goodness.gif")             #Bubble image
+        g_img = Image.open("/mnt/e/Stuff/Res/goodness.gif")         #Bubble image
         s_img = Image.open(s_img_path)                              #Sent image
 
         #Try to fit image nicely to template
@@ -97,6 +97,7 @@ async def goodness(interaction: discord.Interaction, _file: discord.Attachment):
             frames[0].save(f"/temp/goodness_image.gif", save_all=True, duration=100, loop=0, append_images=frames[1:])
         else:
             await interaction.followup.send("Unsupported file format")
+            return
         
         file = discord.File(f"/temp/goodness_image.gif")
         await interaction.followup.send(file=file)
@@ -105,6 +106,53 @@ async def goodness(interaction: discord.Interaction, _file: discord.Attachment):
     else:
         await interaction.followup.send("Unknown error occurred")
 
+@app_commands.command(name="gtm")
+async def panther(interaction: discord.Interaction, _file: discord.Attachment):
+    await interaction.response.defer()
+
+    file_type = _file.content_type.split('/')[1]
+    print(file_type)
+    if file_type in ['png', 'jpeg', 'gif']:
+        s_img_path = f"/temp/sent_image.{file_type}"
+        await _file.save(s_img_path)
+
+        #Read local images into PIL
+        t_img = Image.open("/mnt/e/Stuff/Res/tchalla.gif")          #Tchalla image
+        s_img = Image.open(s_img_path)                              #Sent image
+        #316 114 TL
+        #316 186 BL
+
+        if s_img.height > 72:
+            new_height = 72
+
+        new_width = int(s_img.width / s_img.height * new_height)
+        if new_width > 163:
+            new_width = 163
+
+        s_img = s_img.resize((new_width, new_height))
+        
+        width, height = t_img.size
+
+        if file_type == "png" or file_type == "jpeg":
+            frames = []
+            for i in range(t_img.n_frames):
+                t_img.seek(i)
+                new = Image.new("RGBA", (width, height))
+                new.paste(t_img)
+                new.paste(s_img,(316,186-s_img.height))
+                frames.append(new)
+            frames[0].save(f"/temp/getthisman_image.gif", save_all=True, duration=40, loop=0, append_images=frames[1:])
+        else:
+            await interaction.followup.send("Unsupported file format")
+            return
+        
+        file = discord.File(f"/temp/getthisman_image.gif")
+        await interaction.followup.send(file=file)
+        print("file sent")
+    else:
+        await interaction.followup.send("Unknown error occurred")
+
 async def setup(bot):
     bot.tree.add_command(bubbleify, guild=MY_GUILD)
     bot.tree.add_command(goodness, guild=MY_GUILD)
+    bot.tree.add_command(panther, guild=MY_GUILD)
