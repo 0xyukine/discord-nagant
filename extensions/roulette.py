@@ -70,9 +70,9 @@ async def get_file(ctx, file_type, count, filter, is_embed, filesize):
     print("Getting file")
     temp_list = file_list
 
-    img_filter = re.compile(".*{}.*\.(jpg|jpeg|png|apng|gif|webp)$".format(filter))
-    vid_filter = re.compile(".*{}.*\.(mp4|mkv|mov|3gp|webm)$".format(filter))
-    gif_filter = re.compile(".*{}.*\.(apng|gif)$".format(filter))
+    img_filter = re.compile(".*{}.*\.(jpg|jpeg|png|apng|gif|webp)$".format(filter), re.IGNORECASE)
+    vid_filter = re.compile(".*{}.*\.(mp4|mkv|mov|3gp|webm)$".format(filter), re.IGNORECASE)
+    gif_filter = re.compile(".*{}.*\.(apng|gif)$".format(filter), re.IGNORECASE)
 
     if file_type != "all" or filter != "":
         temp_list = []
@@ -84,7 +84,7 @@ async def get_file(ctx, file_type, count, filter, is_embed, filesize):
             ex = gif_filter
         if file_type == "all":
             print("no filter")
-            ex = re.compile(".*{}.*".format(filter))
+            ex = re.compile(".*{}.*".format(filter), re.IGNORECASE)
 
         for file in file_list:
             if re.search(ex, file):

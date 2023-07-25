@@ -148,9 +148,6 @@ class Pagination(discord.ui.View):
         else:
             print("idk man")
 
-    # async def interaction_check(self, interaction: discord.Interaction):
-    #     pass
-
     async def on_timeout(self):
         print("timed out")
         original = await self._ctx.original_response()
