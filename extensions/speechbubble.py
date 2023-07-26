@@ -78,11 +78,15 @@ async def goodness(interaction: discord.Interaction, _file: discord.Attachment):
         s_img = Image.open(s_img_path)                              #Sent image
 
         duration = g_img.info['duration']
+        if file_type == "gif":
+            s_frames = s_img.n_frames
 
         #Try to fit image nicely to template
         new_height = int(s_img.height / s_img.width * 195)
         if new_height > 230:
             new_height = 230
+
+        new_width = 195
 
         s_img = s_img.resize((195, new_height))
 
@@ -99,16 +103,44 @@ async def goodness(interaction: discord.Interaction, _file: discord.Attachment):
                 frames.append(new)
             frames[0].save(f"/temp/goodness_image.gif", save_all=True, duration=duration, loop=0, append_images=frames[1:])
         elif file_type == "gif":
+            frames = []
+            g_frames = []
+            s_frames = []
+
+            with Image.open("/mnt/e/Stuff/Res/goodness.gif") as im:
+                for i in range(im.n_frames):
+                    print(i)
+                    try:
+                        im.seek(i)
+                        new = Image.new("RGBA", im.size)
+                        new.paste(im)
+                        g_frames.append(new)
+                    except EOFError:
+                        print("whida")
+
+            with Image.open(s_img_path) as im:
+                for i in range(im.n_frames):
+                    print(i)
+                    try:
+                        im.seek(i)
+                        new = Image.new("RGBA", im.size)
+                        new.paste(im)
+                        new = new.resize((new_width, new_height))
+                        s_frames.append(new)
+                    except EOFError:
+                        print("ahohasof")
+            
             j = 0
-            for i in range(g_img.n_frames):
-                if j > s_img.n_frames:
+            for i in g_frames:
+                if j == len(s_frames):
                     j = 0
-                g_img.seek(i)
-                s_img.seek(j)
                 new = Image.new("RGBA", (width, height))
-                new.paste(g_img)
-                new.paste(s_img,(220,270))
+                new.paste(i)
+                # new.paste(s_frames[j],(316,186-s_img.height))
+                new.paste(s_frames[j],(220,270))
                 frames.append(new)
+                j += 1
+
             frames[0].save(f"/temp/goodness_image.gif", save_all=True, duration=duration, loop=0, append_images=frames[1:])
         else:
             await interaction.followup.send("Unsupported file format")
