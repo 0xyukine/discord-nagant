@@ -41,16 +41,20 @@ bot.synced = False
 async def on_ready():
     print(f'{bot.user} online')
 
-    # if not discord.opus.is_loaded():
-    #     discord.opus.load_opus('opus')
-
     if not bot.synced:
-        # await bot.load_extension('extensions.hello')
-        # await bot.load_extension('extensions.roulette')
-        # await bot.load_extension('extensions.music')
+        await bot.load_extension('extensions.hello')
+        await bot.load_extension('extensions.roulette')
+        await bot.load_extension('extensions.music')
         await bot.load_extension('extensions.speechbubble')
         await bot.tree.sync(guild=MY_GUILD)
         bot.synced = True
 
+@bot.tree.command(name="reload", guild=MY_GUILD)
+async def reload(ctx: discord.Interaction, extension: str):
+    if f"{extension}.py" in os.listdir('extensions'):
+        await bot.reload_extension(f'extensions.{extension}')
+        await ctx.response.send_message(f"{extension} extension successfully reloaded")
+    else:
+        await ctx.response.send_message("Extension not found")
 
 bot.run(config['token'])

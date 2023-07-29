@@ -15,7 +15,7 @@ async def hello(ctx):
 
 @app_commands.command(name="hello")
 async def slash_hello(interaction: discord.Interaction):
-    await interaction.response.send_message(F"slash command hewwo {interaction.user}")
+    await interaction.response.send_message(F"slash command hewwo {interaction.user} ^.^")
 
 async def setup(bot):
     bot.add_command(hello)

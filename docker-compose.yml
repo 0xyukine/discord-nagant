@@ -1,0 +1,10 @@
+version: '3'
+services:
+  bot:
+    build: .
+    container_name: discord-bot
+    volumes:
+      - .:/bot
+      - /mnt/e/Stuff:/mnt/e/Stuff
+      - /mnt/d/Music:/music
+    tty: true
