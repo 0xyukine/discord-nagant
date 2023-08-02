@@ -13,6 +13,25 @@ with open('config.json', 'r') as config:
 
 MY_GUILD = discord.Object(id=config['guild'])
 
+def gif_to_frames(path, new_size = None):
+    frames = []
+    with Image.open(path) as im:
+        if new_size == None:
+            new_width, new_height = im.size
+        else:
+            new_width, new_height = new_size
+        for i in range(im.n_frames):
+            try:
+                im.seek(i)
+                new = Image.new("RGBA", im.size)
+                new.paste(im)
+                new = new.resize((new_width, new_height))
+                frames.append(new)
+            except EOFError:
+                print(f"EOF error occured on frame {i}")
+    
+    return frames
+
 @app_commands.command(name="spb")
 async def bubbleify(interaction: discord.Interaction, _file: discord.Attachment):
     await interaction.response.defer()
@@ -104,31 +123,31 @@ async def goodness(interaction: discord.Interaction, _file: discord.Attachment):
             frames[0].save(f"/temp/goodness_image.gif", save_all=True, duration=duration, loop=0, append_images=frames[1:])
         elif file_type == "gif":
             frames = []
-            g_frames = []
-            s_frames = []
+            g_frames = gif_to_frames("/mnt/e/Stuff/Res/goodness.gif")
+            s_frames = gif_to_frames(s_img_path, (new_width, new_height))
 
-            with Image.open("/mnt/e/Stuff/Res/goodness.gif") as im:
-                for i in range(im.n_frames):
-                    print(i)
-                    try:
-                        im.seek(i)
-                        new = Image.new("RGBA", im.size)
-                        new.paste(im)
-                        g_frames.append(new)
-                    except EOFError:
-                        print("whida")
+            # with Image.open("/mnt/e/Stuff/Res/goodness.gif") as im:
+            #     for i in range(im.n_frames):
+            #         print(i)
+            #         try:
+            #             im.seek(i)
+            #             new = Image.new("RGBA", im.size)
+            #             new.paste(im)
+            #             g_frames.append(new)
+            #         except EOFError:
+            #             print("whida")
 
-            with Image.open(s_img_path) as im:
-                for i in range(im.n_frames):
-                    print(i)
-                    try:
-                        im.seek(i)
-                        new = Image.new("RGBA", im.size)
-                        new.paste(im)
-                        new = new.resize((new_width, new_height))
-                        s_frames.append(new)
-                    except EOFError:
-                        print("ahohasof")
+            # with Image.open(s_img_path) as im:
+            #     for i in range(im.n_frames):
+            #         print(i)
+            #         try:
+            #             im.seek(i)
+            #             new = Image.new("RGBA", im.size)
+            #             new.paste(im)
+            #             new = new.resize((new_width, new_height))
+            #             s_frames.append(new)
+            #         except EOFError:
+            #             print("ahohasof")
             
             j = 0
             for i in g_frames:
@@ -196,54 +215,33 @@ async def panther(interaction: discord.Interaction, _file: discord.Attachment):
                 frames.append(new)
             frames[0].save(f"/temp/getthisman_image.gif", save_all=True, duration=duration, loop=0, append_images=frames[1:])
         elif file_type == "gif":
-            # fr = []
-            # with Image.open(s_img_path) as im:
-            #     for frame in ImageSequence.Iterator(im):
-            #         # frame = frame.resize((new_width, new_height))
-            #         fr.append(frame)
-            # j = 0
-            # for i in range(t_img.n_frames):
-            #     print(j)
-            #     if j == s_frames:
-            #         j = 0
-            #     t_img.seek(i)
-            #     # s_img.seek(j)
-            #     # s_img = s_img.resize((new_width, new_height))
-            #     # with Image.open(s_img_path) as im:
-            #     #     im.seek(j)
-            #     new = Image.new("RGBA", (width, height))
-            #     new.paste(t_img)
-            #     # new.paste(s_img,(316,186-s_img.height))
-            #     new.paste(fr[j],(316,186-s_img.height))
-            #     frames.append(new)
-            #     j += 1
 
             frames = []
-            t_frames = []
-            s_frames = []
+            t_frames = gif_to_frames("/mnt/e/Stuff/Res/tchalla.gif")
+            s_frames = gif_to_frames(s_img_path, (new_width, new_height))
 
-            with Image.open("/mnt/e/Stuff/Res/tchalla.gif") as im:
-                for i in range(im.n_frames):
-                    print(i)
-                    try:
-                        im.seek(i)
-                        new = Image.new("RGBA", im.size)
-                        new.paste(im)
-                        t_frames.append(new)
-                    except EOFError:
-                        print("whida")
+            # with Image.open("/mnt/e/Stuff/Res/tchalla.gif") as im:
+            #     for i in range(im.n_frames):
+            #         print(i)
+            #         try:
+            #             im.seek(i)
+            #             new = Image.new("RGBA", im.size)
+            #             new.paste(im)
+            #             t_frames.append(new)
+            #         except EOFError:
+            #             print("whida")
 
-            with Image.open(s_img_path) as im:
-                for i in range(im.n_frames):
-                    print(i)
-                    try:
-                        im.seek(i)
-                        new = Image.new("RGBA", im.size)
-                        new.paste(im)
-                        new = new.resize((new_width, new_height))
-                        s_frames.append(new)
-                    except EOFError:
-                        print("ahohasof")
+            # with Image.open(s_img_path) as im:
+            #     for i in range(im.n_frames):
+            #         print(i)
+            #         try:
+            #             im.seek(i)
+            #             new = Image.new("RGBA", im.size)
+            #             new.paste(im)
+            #             new = new.resize((new_width, new_height))
+            #             s_frames.append(new)
+            #         except EOFError:
+            #             print("ahohasof")
 
             j = 0
             for i in t_frames:
