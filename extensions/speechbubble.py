@@ -2,11 +2,13 @@ import discord
 from discord.ext import commands
 from discord import app_commands
 
-from PIL import Image, ImageSequence
+from PIL import Image, ImageDraw, ImageFont, ImageSequence
 
+import textwrap
 import asyncio
 import json
 import os
+import io
 
 with open('config.json', 'r') as config:
     config = json.load(config)
@@ -242,7 +244,52 @@ async def panther(interaction: discord.Interaction, _file: discord.Attachment):
     else:
         await interaction.followup.send("Unknown error occurred")
 
+@app_commands.command(name="caption")
+async def caption(interaction: discord.Interaction, _file: discord.Attachment, caption: str):
+    await interaction.response.defer()
+
+    # with io.BytesIO() as image_binary:
+    #     await _file.save(image_binary)
+    #     image_binary.seek(0)
+    #     s_img = Image.open(image_binary)
+
+    file_type = _file.content_type.split('/')[1]
+    print(file_type)
+    if file_type in ['png', 'jpeg', 'gif']:
+        s_img_path = f"/temp/sent_image.{file_type}"
+        await _file.save(s_img_path) 
+    
+    s_img = Image.open(s_img_path)  
+
+    width, height = s_img.size
+
+    size = 30
+
+    split_caption = textwrap.wrap(caption, width / size)
+
+    cap_height = len(split_caption) * 50
+
+    wrapped_caption = "\n".join(split_caption)
+
+    
+    font_size = (size / 60) * 100 #increases font because fonts get consistently reduced by 60%
+    font = ImageFont.truetype("res/Menlo-Regular.ttf", font_size)
+    im = Image.new("RGB", (width, cap_height), "white")
+    d = ImageDraw.Draw(im)
+    d.text((0,0), wrapped_caption, fill="black", font=font)
+
+    result = Image.new("RGBA", (width, height + cap_height))
+    result.paste(im)
+    result.paste(s_img,(0,cap_height))
+
+    with io.BytesIO() as image_binary:
+        result.save(image_binary, 'PNG')
+        image_binary.seek(0)
+        file=discord.File(fp=image_binary, filename='caption.png')
+        await interaction.followup.send(file=file)
+
 async def setup(bot):
     bot.tree.add_command(bubbleify, guild=MY_GUILD)
     bot.tree.add_command(goodness, guild=MY_GUILD)
     bot.tree.add_command(panther, guild=MY_GUILD)
+    bot.tree.add_command(caption, guild=MY_GUILD)
