@@ -265,9 +265,11 @@ async def caption(interaction: discord.Interaction, _file: discord.Attachment, c
 
     size = 30
 
-    split_caption = textwrap.wrap(caption, width / size)
-
-    cap_height = len(split_caption) * 50
+    offset = 50
+    caption_size = (width - offset) / size
+    split_caption = textwrap.wrap(caption, caption_size)
+    
+    cap_height = (len(split_caption) * 50) + offset
 
     wrapped_caption = "\n".join(split_caption)
 
@@ -276,7 +278,7 @@ async def caption(interaction: discord.Interaction, _file: discord.Attachment, c
     font = ImageFont.truetype("res/Menlo-Regular.ttf", font_size)
     im = Image.new("RGB", (width, cap_height), "white")
     d = ImageDraw.Draw(im)
-    d.text((0,0), wrapped_caption, fill="black", font=font)
+    d.text((width/2,0), wrapped_caption, fill="black", anchor="ma", font=font)
 
     result = Image.new("RGBA", (width, height + cap_height))
     result.paste(im)
