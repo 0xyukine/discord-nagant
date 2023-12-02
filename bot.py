@@ -42,7 +42,7 @@ async def on_ready():
     print(f'{bot.user} online')
 
     if not bot.synced:
-        await bot.load_extension('extensions.thread_watcher')
+        # await bot.load_extension('extensions.thread_watcher')
         await bot.load_extension('extensions.hello')
         await bot.load_extension('extensions.roulette')
         await bot.load_extension('extensions.music')

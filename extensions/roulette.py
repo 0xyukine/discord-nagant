@@ -1,9 +1,10 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 
 from typing import Literal, NamedTuple
 
+import extensions.structs
 import random
 import json
 import os
@@ -36,52 +37,66 @@ param_desc = {"count":"Numbers of files to send at once",
         "is_embed":"Separate posting and additional information", 
         "filesize":"Maximum filesize limit, default 8MB, hard limit 25MB, bigger limits will slow down returns"}
 
+embed = {"color":13352355,
+        "title":None,
+        "description":None,
+        "image":{"url":None},
+        "video":{"url":None},
+        "author":{"name":"Anchovy",
+                "url":"https://www.youtube.com/watch?v=oczQbHlfvg0",
+                "icon_url":"https://img3.gelbooru.com//samples/02/f8/sample_02f8c86b66ad0487eca49f54565f0675.jpg"}
+        }
+
 class Roulette(app_commands.Group):
     @app_commands.command()
     @app_commands.rename(is_embed='embed')
     @app_commands.describe(**param_desc)
-    async def all(self, ctx, count: int=1, filter: str="", is_embed: Literal['false', 'true'] = 'false', filesize: app_commands.Range[int, 0, 26214400] = 8388608):
+    async def pull(self, ctx, type: Literal['all','image','video','gif'] = 'all', count: int=1, filter: str="", is_embed: Literal['false', 'true'] = 'false', filesize: app_commands.Range[int, 0, 26214400] = 8388608):
         await ctx.response.defer(thinking=True)
-        await get_file(ctx, "all", count, filter, is_embed, filesize)
+        files = get_file(type, count, filter, filesize)
+        if not files:
+            await ctx.followup.send("No results found")
+            return
 
-    @app_commands.command()
-    @app_commands.rename(is_embed='embed')
-    @app_commands.describe(**param_desc)
-    async def image(self, ctx, count: int=1, filter: str="", is_embed: Literal['false', 'true'] = 'false', filesize: app_commands.Range[int, 0, 26214400] = 8388608):
-        await ctx.response.defer(thinking=True)
-        await get_file(ctx, "image", count, filter, is_embed, filesize)
+        for _file in files:
+            if is_embed == "true":
+                e = embed
+                ex = re.compile(".*{}.*\.(jpg|jpeg|png|apng|gif|webp)$".format(filter), re.IGNORECASE)
+                if re.search(ex, _file.filename):
+                    e["title"] = _file.filename; e["description"] = _file.fp; e["image"]["url"] = f"attachment://{_file.filename}"
+                else:
+                    e["title"] = _file.filename; e["description"] = _file.fp; e["video"]["url"] = f"attachment://{_file.filename}"
+                await ctx.channel.send(file=_file, embed=discord.Embed.from_dict(e))
+            else:
+                await ctx.channel.send(files=files)
+                break
+        await ctx.followup.send(f"{len(files)} files sent successfully")
+    
+    @app_commands.command(name="auto")
+    async def auto(self, ctx, filter: str=""):
+        await ctx.response.send_message("Starting auto roulette")
+        self.auto_roulette.start(ctx.channel, filter)
 
-    @app_commands.command()
-    @app_commands.rename(is_embed='embed')
-    @app_commands.describe(**param_desc)
-    async def gif(self, ctx, count: int=1, filter: str="", is_embed: Literal['false', 'true'] = 'false', filesize: app_commands.Range[int, 0, 26214400] = 8388608):
-        await ctx.response.defer(thinking=True)
-        await get_file(ctx, "gif", count, filter, is_embed, filesize)
+    @tasks.loop(seconds=60)
+    async def auto_roulette(self, channel, filter):
+        _file = get_file("all",1,filter,10000000)[0]
+        e = embed
+        e["title"] = _file.filename; e["description"] = _file.fp; e["image"]["url"] = f"attachment://{_file.filename}"
+        await channel.send(file=_file, embed=discord.Embed.from_dict(embed))
 
-    @app_commands.command()
-    @app_commands.rename(is_embed='embed')
-    @app_commands.describe(**param_desc)
-    async def video(self, ctx, count: int=1, filter: str="", is_embed: Literal['false', 'true'] = 'false', filesize: app_commands.Range[int, 0, 26214400] = 8388608):
-        await ctx.response.defer(thinking=True)
-        await get_file(ctx, "video", count, filter, is_embed, filesize)
-
-async def get_file(ctx, file_type, count, filter, is_embed, filesize):
-    print(file_type, count, filter, is_embed, filesize)
-    print("Getting file")
+def get_file(file_type, count, filter, filesize):
+    print(f"Getting file(s): {file_type}, {count}, {filter}, {filesize}")
     temp_list = file_list
-
-    img_filter = re.compile(".*{}.*\.(jpg|jpeg|png|apng|gif|webp)$".format(filter), re.IGNORECASE)
-    vid_filter = re.compile(".*{}.*\.(mp4|mkv|mov|3gp|webm)$".format(filter), re.IGNORECASE)
-    gif_filter = re.compile(".*{}.*\.(apng|gif)$".format(filter), re.IGNORECASE)
+    files = []
 
     if file_type != "all" or filter != "":
         temp_list = []
         if file_type == "image":
-            ex = img_filter
+            ex = re.compile(".*{}.*\.(jpg|jpeg|png|apng|gif|webp)$".format(filter), re.IGNORECASE)
         if file_type == "video":
-            ex = vid_filter
+            ex = re.compile(".*{}.*\.(mp4|mkv|mov|3gp|webm)$".format(filter), re.IGNORECASE)
         if file_type == "gif":
-            ex = gif_filter
+            ex = re.compile(".*{}.*\.(apng|gif)$".format(filter), re.IGNORECASE)
         if file_type == "all":
             print("no filter")
             ex = re.compile(".*{}.*".format(filter), re.IGNORECASE)
@@ -91,32 +106,19 @@ async def get_file(ctx, file_type, count, filter, is_embed, filesize):
                 temp_list.append(file)
 
     if not temp_list:
-        await ctx.followup.send("No results found")
-        return
-
-    files = []
+        return files
 
     for x in range(count):
         while True:
             filepath = random.choice(temp_list)
-            print(filepath)
             if os.path.getsize(filepath) < filesize:
                 break
 
-        file = discord.File(filepath)
+        print(f"File {x}: {filepath}")
+        file = discord.File(filepath, filename=os.path.basename(filepath))
         files.append(file)
 
-        embed = discord.Embed(title=filepath.split("/")[-1], description="/".join(filepath.split("/")[3:-1]))
-        embed.set_author(name="Anchovy", url="https://www.youtube.com/watch?v=oczQbHlfvg0", icon_url="https://img3.gelbooru.com//samples/02/f8/sample_02f8c86b66ad0487eca49f54565f0675.jpg")
-        embed.set_image(url="attachment://{}".format(filepath.split("/")[-1]))
-
-    if is_embed == "true":
-        await ctx.followup.send(file=files[0], embed=embed)
-        for x in range(len(files[1:])):
-            await ctx.channel.send(file=files[1:][x], embed=embed)
-    elif is_embed == "false":
-        await ctx.followup.send(files=files[:10])
-    return
+    return files
 
 async def setup(bot):
     bot.tree.add_command(Roulette(name="roulette"), guild=MY_GUILD)
