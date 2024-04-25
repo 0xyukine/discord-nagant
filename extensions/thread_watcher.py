@@ -21,17 +21,6 @@ class Panopticon(commands.Cog):
                 print(c.threads)
                 self.channel = c
 
-        self.tw = threadWatcher.ThreadWatcher(config='/bot/res')
-        self.tw.update_watched()
-        # self.tw.add_term(board="vt",type="catalog",scope="all",term="ahouhoashosa")
-        print("Starting")
-        self.fetch_updates.start()
-
-    # @commands.Cog.listener()
-    # async def on_ready(self):
-    #     print("hewwo")
-    #     print(self.bot.get_guild(ID).channels)
-
     @tasks.loop(seconds=300)
     async def fetch_updates(self):
         ti = time.time()
@@ -51,7 +40,13 @@ class Panopticon(commands.Cog):
                 for post in x[board][thread_id][-50:]:
                     if post.com != None:
                         await ch_thread.send(self.tw.format_comment(post.com)[:1000])
-
+    
+    @commands.command()
+    async def start_threader(self, ctx):
+        self.tw = threadWatcher.ThreadWatcher(config='/bot/res')
+        self.tw.update_watched()
+        print("Starting")
+        self.fetch_updates.start()
 
 async def setup(bot):
     await bot.add_cog(Panopticon(bot))

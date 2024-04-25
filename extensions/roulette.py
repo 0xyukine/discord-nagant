@@ -4,33 +4,48 @@ from discord import app_commands
 
 from typing import Literal, NamedTuple
 
-import extensions.structs
+#import extensions.structs
+import subprocess
+import sqlite3
 import random
 import json
+import time
 import os
 import re
+
+def walk_dirs():
+    start = time.time()
+    print("Compiling file list")
+    file_list = []
+    with open('res/filesources.json', 'r') as x:
+        file_sources = json.load(x)
+
+    print(file_sources)
+
+    for start_path in file_sources["sources"]:
+        for filtered_dir in file_sources["sources"][start_path]:
+            for dir_path, dirs, files in os.walk(start_path + filtered_dir):
+                os.listdir(start_path + filtered_dir)
+                for file in files:
+                    if re.search("\.(jpg|jpeg|png|apng|gif|webp|mp4|mkv|mov|3gp|webm)", file):
+                        if any(blacklist in dir_path for blacklist in file_sources["blacklist"]):
+                            pass
+                        else:
+                            #file_list.append("{}/{}".format(dir_path, file))
+                            file_list.append("{}/{}".format(dir_path, file))
+    
+    end = time.time() - start
+    print("file list finished compiling: ", end, len(file_list))
+    return file_list
+
+con = sqlite3.connect("/database/bot.db")
+cur = con.cursor()
 
 print("Opening config")
 with open('config.json', 'r') as config:
     config = json.load(config)
 
 MY_GUILD = discord.Object(id=config['guild'])
-
-print("Compiling file list")
-file_list = []
-with open('res/filesources.json', 'r') as x:
-    file_sources = json.load(x)
-
-for start_path in file_sources["sources"]:
-    for filtered_dir in file_sources["sources"][start_path]:
-        for dir_path, dirs, files in os.walk(start_path + filtered_dir):
-            for file in files:
-                if re.search("\.(jpg|jpeg|png|apng|gif|webp|mp4|mkv|mov|3gp|webm)", file):
-                    if any(blacklist in dir_path for blacklist in file_sources["blacklist"]):
-                        pass
-                    else:
-                        file_list.append("{}/{}".format(dir_path, file))
-print("file list finished compiling")
 
 param_desc = {"count":"Numbers of files to send at once", 
         "filter":"Phrase to restrict files returned to", 
@@ -46,6 +61,38 @@ embed = {"color":13352355,
                 "url":"https://www.youtube.com/watch?v=oczQbHlfvg0",
                 "icon_url":"https://img3.gelbooru.com//samples/02/f8/sample_02f8c86b66ad0487eca49f54565f0675.jpg"}
         }
+
+fl = walk_dirs()
+
+@app_commands.command(name="buildfilelist")
+async def build_file_db(interaction: discord.Interaction):
+    await interaction.response.defer(thinking=True)
+
+    table_name = "files2"
+    files_schema = (f'CREATE TABLE {table_name}(md5 TEXT PRIMARY KEY,'
+                'name TEXT DEFAULT \"\",'
+                'uri TEXT DEFAULT \"\",'
+                'ext TEXT DEFAULT \"\",'
+                'size REAL DEFAULT 0)')
+
+    start = time.time()
+
+    res = cur.execute(f"SELECT name FROM sqlite_master WHERE NAME='{table_name}'")
+    if res.fetchone() is None:
+        cur.execute(files_schema)
+    for i in fl:
+        md5 = subprocess.run(["md5sum",i], capture_output=True).stdout.decode("UTF-8")
+            
+        name, ext = os.path.splitext(os.path.basename(i))
+        uri = i
+        size = (os.path.getsize(i)/1024)/1024
+
+        data = (md5,name,uri,ext,size)
+
+        cur.execute(f"INSERT INTO {table_name}(md5,name,uri,ext,size) VALUES (?,?,?,?,?)",data)
+    con.commit()
+    end = time.time() - start
+    await interaction.followup.send(f"finished building db in {end}")
 
 class Roulette(app_commands.Group):
     @app_commands.command()
@@ -114,6 +161,7 @@ def get_file(file_type, count, filter, filesize):
             if os.path.getsize(filepath) < filesize:
                 break
 
+        print(type(filepath))
         print(f"File {x}: {filepath}")
         file = discord.File(filepath, filename=os.path.basename(filepath))
         files.append(file)
@@ -122,3 +170,4 @@ def get_file(file_type, count, filter, filesize):
 
 async def setup(bot):
     bot.tree.add_command(Roulette(name="roulette"), guild=MY_GUILD)
+    bot.tree.add_command(build_file_db, guild=MY_GUILD)

@@ -5,6 +5,7 @@ services:
     container_name: discord-bot
     volumes:
       - .:/bot
-      - /mnt/e/Stuff:/mnt/e/Stuff
+      - /mnt/d:/media
       - /mnt/d/Music:/music
+      - /home/phos/code/database:/database
     tty: true

@@ -4,3 +4,5 @@ python-dotenv
 opuslib
 eyeD3
 Pillow
+async-timeout
+git+https://github.com/0xyukine/thread-watcher
