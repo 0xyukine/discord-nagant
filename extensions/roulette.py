@@ -6,6 +6,7 @@ from typing import Literal, NamedTuple
 
 #import extensions.structs
 import subprocess
+import threading
 import sqlite3
 import random
 import json
@@ -38,6 +39,22 @@ def walk_dirs():
     print("file list finished compiling: ", end, len(file_list))
     return file_list
 
+def chunks(lst, n):
+    for i in range(0, len(lst), n):
+        yield lst[i:i + n]
+
+def format(chunk, thread_no):
+    start = time.time()
+    data = []
+    for i in chunk:
+        data.append((subprocess.run(["md5sum",i],capture_output=True).stdout.decode("UTF-8").split(" ")[0],
+                    os.path.splitext(os.path.basename(i))[0],
+                    i,
+                    os.path.splitext(os.path.basename(i))[1],
+                    os.path.getsize(i)/(1024*1024)))
+    print(f"thread {thread_no} finished in {time.time() - start}")
+    results[thread_no] = data
+
 con = sqlite3.connect("/database/bot.db")
 cur = con.cursor()
 
@@ -64,11 +81,28 @@ embed = {"color":13352355,
 
 fl = walk_dirs()
 
+thread_count = 12
+threads = [None] * thread_count
+results = [None] * thread_count
+
 @app_commands.command(name="buildfilelist")
 async def build_file_db(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
 
-    table_name = "files2"
+    for i, chunk in enumerate(chunks(fl,-(-len(fl)//thread_count))):
+        threads[i] = threading.Thread(target=format, args=(chunk,i))
+        threads[i].start()
+
+    # while True:
+    #     if threading.activeCount() > 0:
+    #         time.sleep(5)
+    #     else:
+    #         break
+
+    for i in range(len(threads)):
+        threads[i].join()
+
+    table_name = "files"
     files_schema = (f'CREATE TABLE {table_name}(md5 TEXT PRIMARY KEY,'
                 'name TEXT DEFAULT \"\",'
                 'uri TEXT DEFAULT \"\",'
@@ -80,17 +114,21 @@ async def build_file_db(interaction: discord.Interaction):
     res = cur.execute(f"SELECT name FROM sqlite_master WHERE NAME='{table_name}'")
     if res.fetchone() is None:
         cur.execute(files_schema)
-    for i in fl:
-        md5 = subprocess.run(["md5sum",i], capture_output=True).stdout.decode("UTF-8")
-            
-        name, ext = os.path.splitext(os.path.basename(i))
-        uri = i
-        size = (os.path.getsize(i)/1024)/1024
-
-        data = (md5,name,uri,ext,size)
-
-        cur.execute(f"INSERT INTO {table_name}(md5,name,uri,ext,size) VALUES (?,?,?,?,?)",data)
-    con.commit()
+    data = []
+    for i in results:
+        for j in i:
+            # cur.execute(f"INSERT INTO {table_name}(md5,name,uri,ext,size) VALUES (?,?,?,?,?)",
+            #             (subprocess.run(["md5sum",i],capture_output=True).stdout.decode("UTF-8").split(" ")[0],
+            #             os.path.splitext(os.path.basename(i))[0],
+            #             i,
+            #             os.path.splitext(os.path.basename(i))[1],
+            #             os.path.getsize(i)/(1024*1024)))
+            try:
+                cur.execute(f"INSERT INTO {table_name}(md5,name,uri,ext,size) VALUES (?,?,?,?,?)",j)
+                con.commit()
+            except sqlite3.Error:
+                await interaction.channel.send(f"Duplicate hash: {j}")
+    #cur.executemany(f"INSERT INTO {table_name}(md5,name,uri,ext,size) VALUES (?,?,?,?,?)",data)
     end = time.time() - start
     await interaction.followup.send(f"finished building db in {end}")
 
