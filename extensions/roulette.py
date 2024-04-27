@@ -120,7 +120,7 @@ class Roulette(app_commands.Group):
     @app_commands.command()
     @app_commands.rename(is_embed='embed')
     @app_commands.describe(**param_desc)
-    async def pull(self, ctx, type: Literal['all','image','video','gif'] = 'all', count: int=1, filter: str="", is_embed: Literal['false', 'true'] = 'false', filesize: app_commands.Range[int, 0, 26214400] = 8388608):
+    async def pull(self, ctx, type: Literal['all','image','video','gif'] = 'all', count: int=1, filter: str="", is_embed: Literal['false', 'true'] = 'false', filesize: app_commands.Range[int, 0, 25] = 15):
         await ctx.response.defer(thinking=True)
         files = get_file(type, count, filter, filesize)
         if not files:
@@ -155,39 +155,23 @@ class Roulette(app_commands.Group):
 
 def get_file(file_type, count, filter, filesize):
     print(f"Getting file(s): {file_type}, {count}, {filter}, {filesize}")
-    temp_list = file_list
     files = []
 
-    if file_type != "all" or filter != "":
-        temp_list = []
-        if file_type == "image":
-            ex = re.compile(".*{}.*\.(jpg|jpeg|png|apng|gif|webp)$".format(filter), re.IGNORECASE)
-        if file_type == "video":
-            ex = re.compile(".*{}.*\.(mp4|mkv|mov|3gp|webm)$".format(filter), re.IGNORECASE)
-        if file_type == "gif":
-            ex = re.compile(".*{}.*\.(apng|gif)$".format(filter), re.IGNORECASE)
-        if file_type == "all":
-            print("no filter")
-            ex = re.compile(".*{}.*".format(filter), re.IGNORECASE)
-
-        for file in file_list:
-            if re.search(ex, file):
-                temp_list.append(file)
-
-    if not temp_list:
-        return files
-
+    if file_type == "all":
+        file_type = ""
+    res = cur.execute(f"SELECT uri, name || '' || ext \
+                        FROM files \
+                        INNER JOIN types ON files.ext = types.extension \
+                        WHERE (types.type LIKE '%{file_type}%') \
+                            AND (files.size < {filesize}) \
+                            AND (files.uri LIKE '%{filter}%') \
+                            AND NOT (files.uri LIKE '%Pictures/Images%');")
+    res = res.fetchall()
     for x in range(count):
-        while True:
-            filepath = random.choice(temp_list)
-            if os.path.getsize(filepath) < filesize:
-                break
-
-        print(type(filepath))
-        print(f"File {x}: {filepath}")
-        file = discord.File(filepath, filename=os.path.basename(filepath))
+        uri = random.choice(res)
+        print(uri)
+        file = discord.File(*uri)
         files.append(file)
-
     return files
 
 async def setup(bot):
