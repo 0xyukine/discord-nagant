@@ -14,47 +14,6 @@ import time
 import os
 import re
 
-def walk_dirs():
-    start = time.time()
-    print("Compiling file list")
-    file_list = []
-    with open('res/filesources.json', 'r') as x:
-        file_sources = json.load(x)
-
-    print(file_sources)
-
-    for start_path in file_sources["sources"]:
-        for filtered_dir in file_sources["sources"][start_path]:
-            for dir_path, dirs, files in os.walk(start_path + filtered_dir):
-                os.listdir(start_path + filtered_dir)
-                for file in files:
-                    if re.search("\.(jpg|jpeg|png|apng|gif|webp|mp4|mkv|mov|3gp|webm)", file):
-                        if any(blacklist in dir_path for blacklist in file_sources["blacklist"]):
-                            pass
-                        else:
-                            #file_list.append("{}/{}".format(dir_path, file))
-                            file_list.append("{}/{}".format(dir_path, file))
-    
-    end = time.time() - start
-    print("file list finished compiling: ", end, len(file_list))
-    return file_list
-
-def chunks(lst, n):
-    for i in range(0, len(lst), n):
-        yield lst[i:i + n]
-
-def format(chunk, thread_no):
-    start = time.time()
-    data = []
-    for i in chunk:
-        data.append((subprocess.run(["md5sum",i],capture_output=True).stdout.decode("UTF-8").split(" ")[0],
-                    os.path.splitext(os.path.basename(i))[0],
-                    i,
-                    os.path.splitext(os.path.basename(i))[1],
-                    os.path.getsize(i)/(1024*1024)))
-    print(f"thread {thread_no} finished in {time.time() - start}")
-    results[thread_no] = data
-
 con = sqlite3.connect("/database/bot.db")
 cur = con.cursor()
 
@@ -79,25 +38,55 @@ embed = {"color":13352355,
                 "icon_url":"https://img3.gelbooru.com//samples/02/f8/sample_02f8c86b66ad0487eca49f54565f0675.jpg"}
         }
 
-fl = walk_dirs()
-
-thread_count = 12
-threads = [None] * thread_count
-results = [None] * thread_count
-
 @app_commands.command(name="buildfilelist")
 async def build_file_db(interaction: discord.Interaction):
     await interaction.response.defer(thinking=True)
 
-    for i, chunk in enumerate(chunks(fl,-(-len(fl)//thread_count))):
+    #Splits the passed list into equal parts of size n
+    def chunks(lst, n):
+        for i in range(0, len(lst), n):
+            yield lst[i:i + n]
+
+
+    def format(chunk, thread_no):
+        start = time.time()
+        data = []
+        for i in chunk:
+            data.append((subprocess.run(["md5sum",i],capture_output=True).stdout.decode("UTF-8").split(" ")[0],
+                        os.path.splitext(os.path.basename(i))[0],
+                        i,
+                        os.path.splitext(os.path.basename(i))[1],
+                        os.path.getsize(i)/(1024*1024)))
+        print(f"thread {thread_no} finished in {time.time() - start}")
+        results[thread_no] = data
+
+    file_list = []
+    thread_count = 12
+    threads = [None] * thread_count
+    results = [None] * thread_count
+
+    start = time.time()
+    print("Compiling file list")
+    with open('res/filesources.json', 'r') as x:
+        file_sources = json.load(x)
+
+    for start_path in file_sources["sources"]:
+        for filtered_dir in file_sources["sources"][start_path]:
+            for dir_path, dirs, files in os.walk(start_path + filtered_dir):
+                os.listdir(start_path + filtered_dir)
+                for file in files:
+                    if re.search("\.(jpg|jpeg|png|apng|gif|webp|mp4|mkv|mov|3gp|webm)", file):
+                        if any(blacklist in dir_path for blacklist in file_sources["blacklist"]):
+                            pass
+                        else:
+                            file_list.append("{}/{}".format(dir_path, file))
+    end = time.time() - start
+    print("file list finished compiling: ", end, len(file_list))
+
+    #Yields chunks of the file list split by the length of the list divided by the number of threads rounded up
+    for i, chunk in enumerate(chunks(file_list,-(-len(file_list)//thread_count))):
         threads[i] = threading.Thread(target=format, args=(chunk,i))
         threads[i].start()
-
-    # while True:
-    #     if threading.activeCount() > 0:
-    #         time.sleep(5)
-    #     else:
-    #         break
 
     for i in range(len(threads)):
         threads[i].join()
@@ -111,24 +100,19 @@ async def build_file_db(interaction: discord.Interaction):
 
     start = time.time()
 
+    #Check if table already exists
     res = cur.execute(f"SELECT name FROM sqlite_master WHERE NAME='{table_name}'")
     if res.fetchone() is None:
         cur.execute(files_schema)
-    data = []
+
     for i in results:
         for j in i:
-            # cur.execute(f"INSERT INTO {table_name}(md5,name,uri,ext,size) VALUES (?,?,?,?,?)",
-            #             (subprocess.run(["md5sum",i],capture_output=True).stdout.decode("UTF-8").split(" ")[0],
-            #             os.path.splitext(os.path.basename(i))[0],
-            #             i,
-            #             os.path.splitext(os.path.basename(i))[1],
-            #             os.path.getsize(i)/(1024*1024)))
             try:
                 cur.execute(f"INSERT INTO {table_name}(md5,name,uri,ext,size) VALUES (?,?,?,?,?)",j)
-                con.commit()
             except sqlite3.Error:
-                await interaction.channel.send(f"Duplicate hash: {j}")
-    #cur.executemany(f"INSERT INTO {table_name}(md5,name,uri,ext,size) VALUES (?,?,?,?,?)",data)
+                # await interaction.channel.send(f"Duplicate hash: {j}")
+                pass
+    con.commit()
     end = time.time() - start
     await interaction.followup.send(f"finished building db in {end}")
 
