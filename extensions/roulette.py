@@ -14,7 +14,7 @@ import time
 import os
 import re
 
-con = sqlite3.connect("/database/bot.db")
+con = sqlite3.connect("res/bot.db")
 cur = con.cursor()
 
 print("Opening config")

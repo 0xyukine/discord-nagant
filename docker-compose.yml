@@ -7,5 +7,4 @@ services:
       - .:/bot
       - /mnt/d:/media
       - /mnt/d/Music:/music
-      - /home/phos/code/database:/database
     tty: true
