@@ -64,7 +64,7 @@ async def bubbleify(interaction: discord.Interaction, _file: discord.Attachment)
         await _file.save(s_img_path)                                #Save discord image locally
 
         #Read local images into PIL
-        b_img = Image.open("/mnt/e/Stuff/Res/bubble.jpg")               #Bubble image
+        b_img = Image.open("/res/bubble.jpg")               #Bubble image
         s_img = Image.open(s_img_path)                              #Sent image
 
         new_height = int(b_img.height / b_img.width * s_img.width)  #Scale change in width with height
@@ -114,7 +114,7 @@ async def goodness(interaction: discord.Interaction, _file: discord.Attachment):
         await _file.save(s_img_path)
 
         #Read local images into PIL
-        g_img = Image.open("/mnt/e/Stuff/Res/goodness.gif")         #Bubble image
+        g_img = Image.open("/res/goodness.gif")         #Bubble image
         s_img = Image.open(s_img_path)                              #Sent image
 
         duration = g_img.info['duration']
@@ -146,7 +146,7 @@ async def goodness(interaction: discord.Interaction, _file: discord.Attachment):
             frames[0].save(f"/temp/goodness_image.gif", save_all=True, duration=duration, loop=0, append_images=frames[1:])
         elif file_type == "gif":
             frames = []
-            g_frames = gif_to_frames("/mnt/e/Stuff/Res/goodness.gif")
+            g_frames = gif_to_frames("/res/goodness.gif")
             s_frames = gif_to_frames(s_img_path, (new_width, new_height))
 
             j = 0
@@ -183,7 +183,7 @@ async def panther(interaction: discord.Interaction, _file: discord.Attachment):
         await _file.save(s_img_path)
 
         #Read local images into PIL
-        t_img = Image.open("/mnt/e/Stuff/Res/tchalla.gif")          #Tchalla image
+        t_img = Image.open("/res/tchalla.gif")          #Tchalla image
         s_img = Image.open(s_img_path)                              #Sent image
         #316 114 TL
         #316 186 BL
@@ -219,7 +219,7 @@ async def panther(interaction: discord.Interaction, _file: discord.Attachment):
         elif file_type == "gif":
 
             frames = []
-            t_frames = gif_to_frames("/mnt/e/Stuff/Res/tchalla.gif")
+            t_frames = gif_to_frames("/res/tchalla.gif")
             s_frames = gif_to_frames(s_img_path, (new_width, new_height))
 
             j = 0
